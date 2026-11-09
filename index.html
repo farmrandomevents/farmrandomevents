@@ -1,0 +1,191 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Farm Random Events Generator</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #edf3e8;
+      color: #233524;
+      text-align: center;
+    }
+
+    header {
+      background: #225c30;
+      color: white;
+      padding: 35px 20px;
+    }
+
+    h1 { margin: 0 0 12px; }
+
+    main {
+      max-width: 650px;
+      margin: 35px auto;
+      padding: 0 18px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 14px;
+      padding: 30px 24px;
+      box-shadow: 0 4px 16px #00000018;
+      margin-bottom: 25px;
+    }
+
+    .category {
+      color: #387d41;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    #eventTitle { font-size: 26px; }
+
+    #eventRule {
+      background: #edf3e8;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+
+    button {
+      background: #327a39;
+      color: white;
+      border: none;
+      border-radius: 9px;
+      padding: 17px 28px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover { background: #205c2b; }
+
+    footer {
+      color: #647064;
+      font-size: 13px;
+      padding: 25px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🚜 Farm Random Events</h1>
+  <p>Farming Simulator 25 Gameplay Companion</p>
+</header>
+
+<main>
+  <div class="card">
+    <p class="category" id="category">Ready to play?</p>
+
+    <h2 id="eventTitle">Your next farm event awaits!</h2>
+
+    <p id="description">
+      Press the button to discover what happens
+      next on your farm.
+    </p>
+
+    <div id="eventRule">
+      Random events make every farming day different.
+    </div>
+  </div>
+
+  <button onclick="generateEvent()">
+    🎲 Generate Random Event
+  </button>
+</main>
+
+<footer>
+  Companion to Farming Simulator 25:
+  The Ultimate Gameplay Guide
+  <br>
+  Independent fan-made gameplay tool.
+</footer>
+
+<script>
+const events = [
+  {
+    category: "Weather",
+    title: "Heavy Rainfall",
+    description: "Persistent rain has left your fields waterlogged.",
+    rule: "Suspend all fieldwork for one in-game day."
+  },
+  {
+    category: "Machinery",
+    title: "Tractor Breakdown",
+    description: "Your main tractor has developed a mechanical fault.",
+    rule: "Visit the workshop and pay for repairs before using it again."
+  },
+  {
+    category: "Animals",
+    title: "Livestock Health Check",
+    description: "Your livestock require additional attention.",
+    rule: "Check all animal feed, water and bedding before continuing."
+  },
+  {
+    category: "Financial",
+    title: "Unexpected Farm Expense",
+    description: "An unexpected maintenance bill has arrived.",
+    rule: "Deduct £2,000 from your farm funds."
+  },
+  {
+    category: "Community",
+    title: "Neighbour Needs Help",
+    description: "A neighbouring farmer urgently needs assistance.",
+    rule: "Complete one contract before returning to your own fieldwork."
+  },
+  {
+    category: "Fields",
+    title: "Field Inspection",
+    description: "A field requires an unexpected inspection.",
+    rule: "Inspect your fields and complete any outstanding maintenance."
+  },
+  {
+    category: "Machinery",
+    title: "Equipment Service",
+    description: "One of your machines is due for servicing.",
+    rule: "Service your most-used machine before its next job."
+  },
+  {
+    category: "Weather",
+    title: "Unexpected Dry Spell",
+    description: "Dry weather has affected your farming plans.",
+    rule: "Delay your next planting operation by one in-game day."
+  }
+];
+
+let lastEvent = -1;
+
+function generateEvent() {
+  let index;
+
+  do {
+    index = Math.floor(Math.random() * events.length);
+  } while (index === lastEvent && events.length > 1);
+
+  lastEvent = index;
+  const event = events[index];
+
+  document.getElementById("category").textContent =
+    event.category;
+
+  document.getElementById("eventTitle").textContent =
+    event.title;
+
+  document.getElementById("description").textContent =
+    event.description;
+
+  document.getElementById("eventRule").textContent =
+    "Your challenge: " + event.rule;
+}
+</script>
+
+</body>
+</html>
