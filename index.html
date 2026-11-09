@@ -3,202 +3,484 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Farm Roleplay Hub</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Farm Roleplay Hub | Farming Simulator Gameplay Tools</title>
 <style>
+:root{
+ --green:#193f2b;
+ --light:#34734b;
+ --cream:#f5f4ec;
+ --gold:#e3bc69;
+}
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#f2f5ef;color:#26392b}
-header{background:#173e2a;color:white;text-align:center;padding:30px 15px}
-header h1{margin:0;font-size:32px}
-nav{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;background:#285b3a;padding:12px}
-nav button{background:transparent;color:white;border:0;padding:12px;cursor:pointer;font-size:15px}
-nav button:hover,nav button.active{background:#418052;border-radius:6px}
-main{max-width:1050px;margin:auto;padding:25px 18px;min-height:65vh}
-.tab{display:none}
-.tab.active{display:block}
-.card{background:white;padding:25px;border-radius:12px;margin:20px 0;box-shadow:0 2px 10px #0001}
-h2{color:#235636}
-button.action{background:#287343;color:white;border:0;padding:13px 20px;border-radius:7px;cursor:pointer;font-size:16px;margin:8px 6px 8px 0}
-button.action:hover{background:#18522c}
-select,input{padding:12px;border:1px solid #aaa;border-radius:6px;font-size:16px;max-width:100%}
-.result{background:#e7f2e4;border-left:5px solid #39894b;padding:18px;margin-top:15px;border-radius:5px}
-.farms{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:15px}
-.farm{background:#edf4e9;padding:18px;border-radius:8px}
-.log{background:#f5f5f5;padding:15px;max-height:350px;overflow:auto}
-footer{text-align:center;background:#173e2a;color:white;padding:25px}
-a{color:#237344}
+body{
+ margin:0;
+ font-family:Arial,Helvetica,sans-serif;
+ background:var(--cream);
+ color:#26392d;
+ line-height:1.6;
+}
+header{
+ background:var(--green);
+ color:white;
+ padding:18px 6%;
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ flex-wrap:wrap;
+ gap:12px;
+}
+.brand{font-size:24px;font-weight:800;letter-spacing:1px}
+.tagline{font-size:12px;color:#c5ddc8}
+nav{display:flex;flex-wrap:wrap;gap:6px}
+nav button{
+ background:none;
+ border:0;
+ color:white;
+ padding:10px 13px;
+ cursor:pointer;
+ font-size:14px;
+ border-radius:5px;
+}
+nav button:hover{background:#356749}
+.hero{
+ min-height:440px;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ text-align:center;
+ color:white;
+ padding:55px 20px;
+ background:
+ linear-gradient(90deg,rgba(12,36,21,.88),rgba(12,36,21,.35)),
+ url("https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1600&q=85")
+ center/cover;
+}
+.hero h1{
+ font-size:clamp(34px,5vw,60px);
+ line-height:1.12;
+ max-width:800px;
+ margin:0 auto 20px;
+}
+.hero p{max-width:650px;margin:0 auto 24px;font-size:18px}
+.gold{color:var(--gold)}
+main{max-width:1120px;margin:auto;padding:45px 20px}
+.page{display:none}
+.page.active{display:block}
+h2{font-size:30px;color:var(--green);margin:0 0 12px}
+.intro{text-align:center;margin-bottom:30px}
+.intro p{color:#657268}
+.cards{
+ display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:25px;
+}
+.feature{
+ background:white;
+ border:1px solid #e0e5db;
+ border-radius:14px;
+ overflow:hidden;
+ box-shadow:0 6px 20px #00000012;
+ cursor:pointer;
+ transition:transform .2s,box-shadow .2s;
+}
+.feature:hover,.feature:focus-visible{
+ transform:translateY(-5px);
+ box-shadow:0 12px 28px #00000022;
+ outline:2px solid var(--light);
+}
+.feature img{width:100%;height:230px;object-fit:cover;display:block}
+.feature-body{padding:25px}
+.feature h3{font-size:24px;margin:0 0 10px;color:var(--green)}
+.feature p{color:#5c695f}
+.button{
+ display:inline-block;
+ background:var(--light);
+ color:white;
+ border:0;
+ padding:13px 23px;
+ border-radius:7px;
+ cursor:pointer;
+ font-weight:bold;
+ font-size:15px;
+ margin:7px 5px 7px 0;
+ text-decoration:none;
+}
+.button:hover{background:#205a35}
+.button.secondary{background:#e8eee5;color:var(--green)}
+.panel{
+ background:white;
+ border-radius:12px;
+ padding:28px;
+ margin:22px 0;
+ box-shadow:0 4px 18px #00000010;
+}
+.result{
+ background:#edf5e9;
+ border-left:5px solid var(--light);
+ padding:20px;
+ margin-top:18px;
+ border-radius:6px;
+}
+input,select{
+ padding:13px;
+ border:1px solid #aeb9ad;
+ border-radius:6px;
+ font-size:16px;
+ max-width:100%;
+}
+input{width:290px}
+.lock{
+ max-width:580px;
+ margin:35px auto;
+ text-align:center;
+}
+.farm-grid{
+ display:grid;
+ grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+ gap:15px;
+ margin-top:20px;
+}
+.farm{
+ background:#eef3e9;
+ border-radius:10px;
+ padding:18px;
+}
+.farm h3{margin-top:0;color:var(--green)}
+.news{
+ background:#f3f4f0;
+ border-radius:8px;
+ padding:18px;
+ margin-top:20px;
+}
+.book{
+ display:grid;
+ grid-template-columns:120px 1fr;
+ gap:22px;
+ align-items:center;
+}
+.book-cover{
+ background:linear-gradient(145deg,#173d28,#56814a);
+ color:white;
+ min-height:165px;
+ border-radius:5px;
+ padding:18px 10px;
+ display:flex;
+ align-items:center;
+ text-align:center;
+ font-weight:bold;
+ font-size:15px;
+}
+footer{
+ background:var(--green);
+ color:#dbe8dc;
+ text-align:center;
+ padding:35px 20px;
+ font-size:14px;
+}
+.hidden{display:none!important}
+@media(max-width:650px){
+ header{justify-content:center;text-align:center}
+ .cards{grid-template-columns:1fr}
+ .hero{min-height:360px}
+ .feature img{height:200px}
+ .book{grid-template-columns:1fr}
+ .book-cover{max-width:160px}
+}
 </style>
 </head>
 <body>
 
 <header>
-<h1>🚜 FARM ROLEPLAY HUB</h1>
-<p>Realistic Farming. Your Rules. Your Story.</p>
+<div>
+<div class="brand">🚜 FARM ROLEPLAY HUB</div>
+<div class="tagline">REALISTIC FARMING. YOUR RULES. YOUR STORY.</div>
+</div>
+<nav>
+<button onclick="go('home')">Home</button>
+<button onclick="go('books')">Our Books</button>
+<button onclick="go('owners')">Book Owners</button>
+<button onclick="go('about')">About</button>
+</nav>
 </header>
 
-<nav>
-<button class="active" onclick="showTab('home',this)">Home</button>
-<button onclick="showTab('books',this)">Our Books</button>
-<button onclick="showTab('events',this)">Random Events</button>
-<button onclick="showTab('competitors',this)">AI Competitors</button>
-<button onclick="showTab('owners',this)">Book Owners</button>
-</nav>
+<div id="home" class="page active">
+<section class="hero">
+<div>
+<h1>Make Every Farming Season <span class="gold">Different.</span></h1>
+<p>Bring your Farming Simulator world to life with unexpected events, rival farming businesses and realistic gameplay challenges.</p>
+<button class="button" onclick="go('features')">Explore Gameplay Tools</button>
+</div>
+</section>
 
 <main>
+<section id="features">
+<div class="intro">
+<h2>Interactive Farming Tools</h2>
+<p>Exclusive gameplay companions for Farm Roleplay Hub book owners.</p>
+</div>
 
-<section id="home" class="tab active">
-<div class="card">
-<h2>Welcome to Farm Roleplay Hub</h2>
-<p>Make your Farming Simulator experience more realistic with random events, rival farming businesses, gameplay challenges and roleplaying guides.</p>
-<p>Use the tabs above to explore our interactive farming tools.</p>
-<button class="action" onclick="showTab('events')">Try Random Events</button>
-<button class="action" onclick="showTab('competitors')">Try AI Competitors</button>
+<div class="cards">
+
+<div class="feature" role="button" tabindex="0"
+ onclick="requestTool('events')"
+ onkeydown="if(event.key==='Enter')requestTool('events')">
+<img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=900&q=80"
+ alt="Open farmland">
+<div class="feature-body">
+<h3>🎲 Random Event Generator</h3>
+<p>Unexpected weather, machinery breakdowns, animal problems, financial surprises and farming challenges.</p>
+<p><strong>Never know what your next farming day will bring.</strong></p>
+<span class="button">Open Generator →</span>
+</div>
+</div>
+
+<div class="feature" role="button" tabindex="0"
+ onclick="requestTool('competitors')"
+ onkeydown="if(event.key==='Enter')requestTool('competitors')">
+<img src="https://images.unsplash.com/photo-1472396961693-142e6e269027?w=900&q=80"
+ alt="Countryside landscape">
+<div class="feature-body">
+<h3>🚜 AI Farming Competitors</h3>
+<p>Create rival farms that expand, purchase fields, encounter setbacks and compete for farmland.</p>
+<p><strong>Your neighbours have plans of their own.</strong></p>
+<span class="button">Manage Rival Farms →</span>
+</div>
+</div>
+
 </div>
 </section>
 
-<section id="books" class="tab">
+<div class="panel" style="margin-top:45px;text-align:center">
+<h2>Take Your Farming Further</h2>
+<p>Discover our Farming Simulator gameplay guides, featuring realistic rules, campaigns and farming systems.</p>
+<button class="button" onclick="go('books')">Explore Our Books</button>
+</div>
+</main>
+</div>
+
+<div id="books" class="page">
+<main>
 <h2>Our Farming Simulator Books</h2>
-<div class="card">
+<p>Gameplay guides by Mark Sharpe.</p>
+
+<div class="panel book">
+<div class="book-cover">FARMING SIMULATOR 25<br>THE ULTIMATE GAMEPLAY GUIDE</div>
+<div>
 <h3>Farming Simulator 25: The Ultimate Gameplay Guide</h3>
-<p>By Mark Sharpe</p>
-<p>Realistic rules, campaigns, random events, livestock systems and rival farms.</p>
+<p>Realistic gameplay rules, farming campaigns, random events, livestock systems and AI competitors.</p>
+<p><em>Amazon purchase link coming soon.</em></p>
 </div>
-<div class="card">
-<h3>Farming Simulator 25: The Realistic Roleplaying Guide</h3>
-<p>By Mark Sharpe</p>
-<p>Bring more imagination, challenge and realism to your farm.</p>
 </div>
-</section>
 
-<section id="events" class="tab">
-<h2>🎲 Random Event Generator</h2>
-<div class="card">
-<p>Choose an event category or generate a surprise from any category.</p>
-<select id="category">
-<option value="all">All Categories</option>
-<option value="weather">Weather</option>
-<option value="machinery">Machinery</option>
-<option value="financial">Financial</option>
-<option value="animals">Animals</option>
-<option value="community">Community</option>
-<option value="fields">Fields & Crops</option>
-</select>
-<br>
-<button class="action" onclick="generateEvent()">Generate Random Event</button>
-<div id="eventResult" class="result">Your next farming event will appear here.</div>
+<div class="panel book">
+<div class="book-cover">FARMING SIMULATOR 25<br>REALISTIC ROLEPLAYING GUIDE</div>
+<div>
+<h3>Farming Simulator 25: Realistic Roleplaying Guide</h3>
+<p>Give your farming career more depth with imaginative challenges and realistic roleplaying ideas.</p>
+<p><em>Amazon purchase link coming soon.</em></p>
 </div>
-</section>
-
-<section id="competitors" class="tab">
-<h2>🚜 AI Farming Competitors</h2>
-<div class="card">
-<p>Four rival farmers compete for land, expand their businesses and face setbacks.</p>
-<p>Advance one farming year to see their decisions. Apply the results manually in your Farming Simulator save.</p>
-<p><strong>Current year:</strong> <span id="year">1</span></p>
-<button class="action" onclick="advanceYear()">Advance One Year</button>
-<button class="action" onclick="resetFarms()">Reset Farms</button>
-<div id="farmCards" class="farms"></div>
-<h3>Annual Farming News</h3>
-<div id="farmLog" class="log">Advance a year to begin the simulation.</div>
 </div>
-</section>
+</main>
+</div>
 
-<section id="owners" class="tab">
+<div id="owners" class="page">
+<main>
+<div class="panel lock">
 <h2>🔒 Book Owners' Area</h2>
-<div class="card">
-<p>Enter the test password printed here for demonstration purposes.</p>
-<input type="password" id="password" placeholder="Book password">
-<button class="action" onclick="unlock()">Unlock</button>
-<p id="passwordMessage"></p>
-<div id="ownerContent" style="display:none">
+<p>Enter the password from your book to unlock the interactive farming tools.</p>
+<input id="password" type="password" placeholder="Enter your password">
+<br>
+<button class="button" onclick="unlock()">Unlock Content</button>
+<p id="passwordMessage" aria-live="polite"></p>
+<div id="ownerContent" class="hidden">
 <div class="result">
 <h3>Welcome, Book Owner!</h3>
-<p>Your gameplay tools are available below.</p>
-<button class="action" onclick="showTab('events')">Random Event Generator</button>
-<button class="action" onclick="showTab('competitors')">AI Farming Competitors</button>
+<p>Your exclusive farming tools are ready.</p>
+<button class="button" onclick="go('events')">Random Events</button>
+<button class="button" onclick="go('competitors')">AI Competitors</button>
 </div>
 </div>
 </div>
-</section>
-
 </main>
+</div>
+
+<div id="events" class="page">
+<main>
+<button class="button secondary" onclick="go('home')">← Homepage</button>
+<h2>🎲 Random Event Generator</h2>
+<p>Generate unexpected challenges for your Farming Simulator career.</p>
+
+<div class="panel">
+<label for="category"><strong>Event category</strong></label>
+<br><br>
+<select id="category">
+<option value="all">Surprise Me — All Categories</option>
+<option value="weather">Weather</option>
+<option value="machinery">Machinery</option>
+<option value="fields">Fields & Crops</option>
+<option value="animals">Animals</option>
+<option value="finance">Financial</option>
+<option value="community">Community</option>
+</select>
+<br><br>
+<button class="button" onclick="generateEvent()">🎲 Generate Event</button>
+<div id="eventResult" class="result" aria-live="polite">
+Your next event will appear here.
+</div>
+</div>
+</main>
+</div>
+
+<div id="competitors" class="page">
+<main>
+<button class="button secondary" onclick="go('home')">← Homepage</button>
+<h2>🚜 AI Farming Competitors</h2>
+<p>Watch rival farmers grow their businesses and compete for land.</p>
+<div class="panel">
+<p><strong>Farming Year: <span id="year">1</span></strong></p>
+<button class="button" onclick="advanceYear()">Advance One Year</button>
+<button class="button secondary" onclick="resetFarms()">Reset Simulation</button>
+<div id="farmCards" class="farm-grid"></div>
+<h3>Farming News</h3>
+<div id="farmLog" class="news" aria-live="polite">
+Advance a year to see what your rivals do.
+</div>
+</div>
+<p><small>Apply land purchases and other changes manually in your Farming Simulator save. The website does not modify the game.</small></p>
+</main>
+</div>
+
+<div id="about" class="page">
+<main>
+<div class="panel">
+<h2>About Farm Roleplay Hub</h2>
+<p>Farm Roleplay Hub is an independent companion website for players who want to bring greater realism, challenge and imagination to Farming Simulator.</p>
+<p>Created to accompany Farming Simulator gameplay guides by Mark Sharpe.</p>
+</div>
+</main>
+</div>
 
 <footer>
-<p>Farm Roleplay Hub | Guides by Mark Sharpe</p>
-<small>Independent fan-made website. Not affiliated with GIANTS Software.</small>
+<strong>🚜 FARM ROLEPLAY HUB</strong>
+<p>Realistic Farming. Your Rules. Your Story.</p>
+<p>© <span id="copyrightYear"></span> Farm Roleplay Hub</p>
+<small>Independent fan-created website. Not affiliated with or endorsed by GIANTS Software.</small>
 </footer>
 
 <script>
-function showTab(id,button){
-document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
-document.getElementById(id).classList.add("active");
-document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
-const names=["home","books","events","competitors","owners"];
-const index=names.indexOf(id);
-document.querySelectorAll("nav button")[index].classList.add("active");
-window.scrollTo(0,0);
+let unlocked=false;
+let requestedTool=null;
+
+const protectedPages=["events","competitors"];
+
+function go(id){
+ if(id==="features"){
+  go("home");
+  document.getElementById("features").scrollIntoView({behavior:"smooth"});
+  return;
+ }
+ if(protectedPages.includes(id)&&!unlocked){
+  requestedTool=id;
+  id="owners";
+ }
+ document.querySelectorAll(".page").forEach(p=>{
+  p.classList.toggle("active",p.id===id);
+ });
+ window.scrollTo(0,0);
 }
 
+function requestTool(id){
+ requestedTool=id;
+ go(id);
+}
+
+function unlock(){
+ const password=document.getElementById("password").value.trim().toUpperCase();
+ const msg=document.getElementById("passwordMessage");
+ if(password==="FARM25"){
+  unlocked=true;
+  msg.textContent="Password accepted!";
+  msg.style.color="green";
+  document.getElementById("ownerContent").classList.remove("hidden");
+  if(requestedTool){
+   const target=requestedTool;
+   requestedTool=null;
+   go(target);
+  }
+ }else{
+  msg.textContent="Incorrect password. Please try again.";
+  msg.style.color="#b52222";
+ }
+}
+
+document.getElementById("password").addEventListener("keydown",e=>{
+ if(e.key==="Enter")unlock();
+});
+
 const events={
-weather:[
-["Heavy Rain","No fieldwork for the next 2 in-game days."],
-["Unexpected Frost","Delay harvesting or planting for 1 day."],
-["Dry Spell","No rain expected for 7 days. Prioritise vulnerable crops."],
-["Storm Damage","Spend £1,500 repairing buildings or equipment."],
-["Perfect Conditions","Complete one additional fieldwork job today."]
-],
-machinery:[
-["Tractor Breakdown","Your main tractor is unavailable for 2 days."],
-["Hydraulic Failure","Pay £1,200 for repairs."],
-["Tyre Puncture","Pay £350 and stop work for the day."],
-["Equipment Inspection","All machinery must return to the farmyard for inspection."],
-["Expensive Service","Pay £800 for your oldest working machine."]
-],
-financial:[
-["Unexpected Tax Bill","Pay £2,000 from your farm account."],
-["Government Grant","Receive £1,500 for farm improvements."],
-["Fuel Price Increase","Add 20% to your next fuel purchase."],
-["Insurance Claim","Pay £750 excess for farm damage."],
-["Market Opportunity","Sell one crop at its next favourable price."]
-],
-animals:[
-["Veterinary Visit","Pay £500 for animal healthcare."],
-["Animal Illness","Keep one group of animals isolated for 3 days."],
-["Pasture Damage","Move livestock to a different pasture for 5 days."],
-["Healthy Herd","No animal-related costs this month."],
-["Feed Shortage","Buy additional feed before the next in-game day."]
-],
-community:[
-["Neighbour Needs Help","Complete one local contract before your own fieldwork."],
-["Charity Donation","Donate £500 from farm funds."],
-["Local Farm Auction","You may purchase one used machine this month."],
-["Road Closure","Avoid one road for the next 3 days."],
-["Community Favour","Complete a contract without taking payment."]
-],
-fields:[
-["Weed Outbreak","Treat one field before continuing other jobs."],
-["Crop Disease","Reduce one field's harvest income by 15%."],
-["Drainage Problem","No fieldwork on one selected field for 3 days."],
-["Boundary Dispute","Delay use of one field for 2 days."],
-["Soil Improvement","Apply lime or fertiliser to your poorest field."]
-]
+ weather:[
+ ["Heavy Rain","Stop all fieldwork for 2 in-game days."],
+ ["Storm Warning","Return all machinery to the farmyard and suspend work for 1 day."],
+ ["Unexpected Frost","Delay planting or harvesting for 1 day."],
+ ["Prolonged Dry Spell","Avoid planting new crops for the next 5 days."]
+ ],
+ machinery:[
+ ["Tractor Breakdown","Your main tractor is unavailable for 2 days."],
+ ["Hydraulic Failure","Pay £1,200 for repairs."],
+ ["Tyre Puncture","Pay £350 and lose half a working day."],
+ ["Harvester Fault","Stop harvesting until the next in-game day."]
+ ],
+ fields:[
+ ["Weed Outbreak","Treat one selected field before other fieldwork."],
+ ["Drainage Problem","Keep machinery off one field for 3 days."],
+ ["Crop Disease","Deduct 15% from the income of one field's next harvest."],
+ ["Boundary Dispute","One field cannot be worked for 2 days."]
+ ],
+ animals:[
+ ["Veterinary Visit","Pay £500 in veterinary expenses."],
+ ["Pasture Damage","Move one herd to another pasture for 5 days."],
+ ["Feed Shortage","Purchase additional feed immediately."],
+ ["Animal Illness","Keep one group of livestock isolated for 3 days."]
+ ],
+ finance:[
+ ["Unexpected Tax Bill","Pay £2,000."],
+ ["Farm Improvement Grant","Receive £1,500 for farm improvements."],
+ ["Insurance Excess","Pay £750 for an unexpected claim."],
+ ["Fuel Price Rise","Increase your next fuel purchase cost by 20%."]
+ ],
+ community:[
+ ["Neighbour Needs Help","Complete one contract before your own fieldwork."],
+ ["Charity Fundraiser","Donate £500 to a local cause."],
+ ["Road Closure","Avoid your usual main road for 3 days."],
+ ["Community Favour","Complete one contract without keeping the payment."]
+ ]
 };
 
 function generateEvent(){
-let category=document.getElementById("category").value;
-const keys=Object.keys(events);
-if(category==="all")category=keys[Math.floor(Math.random()*keys.length)];
-const list=events[category];
-const event=list[Math.floor(Math.random()*list.length)];
-document.getElementById("eventResult").innerHTML=
-"<strong>"+event[0]+"</strong><p>"+event[1]+"</p><small>Category: "+category+"</small>";
+ let category=document.getElementById("category").value;
+ const keys=Object.keys(events);
+ if(category==="all"){
+  category=keys[Math.floor(Math.random()*keys.length)];
+ }
+ const choices=events[category];
+ const item=choices[Math.floor(Math.random()*choices.length)];
+ const result=document.getElementById("eventResult");
+ result.replaceChildren();
+ const heading=document.createElement("h3");
+ heading.textContent=item[0];
+ const desc=document.createElement("p");
+ desc.textContent=item[1];
+ const categoryText=document.createElement("small");
+ categoryText.textContent="Category: "+category;
+ result.append(heading,desc,categoryText);
 }
 
-const initialFarms=[
-{name:"Oakfield Farm",type:"Traditionalist",fields:4,money:85000},
-{name:"Green Valley",type:"Aggressive Buyer",fields:5,money:140000},
-{name:"Hilltop Livestock",type:"Specialist",fields:3,money:95000},
-{name:"Brookside Family Farm",type:"Family Farm",fields:4,money:75000}
+const startingFarms=[
+ {name:"Oakfield Farm",type:"Traditionalist",fields:4,money:85000},
+ {name:"Green Valley",type:"Aggressive Buyer",fields:5,money:140000},
+ {name:"Hilltop Livestock",type:"Specialist",fields:3,money:95000},
+ {name:"Brookside Farm",type:"Family Farm",fields:4,money:75000}
 ];
 
 let farms=[];
@@ -206,82 +488,79 @@ let year=1;
 const fieldPrice=35000;
 
 function resetFarms(){
-farms=initialFarms.map(f=>({...f}));
-year=1;
-document.getElementById("year").textContent=year;
-document.getElementById("farmLog").textContent="Simulation reset. Advance a year to begin.";
-renderFarms();
+ farms=startingFarms.map(f=>({...f}));
+ year=1;
+ document.getElementById("year").textContent=year;
+ document.getElementById("farmLog").textContent="Simulation reset. Advance a year to begin.";
+ renderFarms();
 }
 
 function renderFarms(){
-document.getElementById("farmCards").innerHTML=farms.map(f=>`
-<div class="farm">
-<h3>${f.name}</h3>
-<p><strong>Personality:</strong> ${f.type}</p>
-<p><strong>Fields:</strong> ${f.fields}</p>
-<p><strong>Funds:</strong> £${f.money.toLocaleString("en-GB")}</p>
-</div>`).join("");
+ const container=document.getElementById("farmCards");
+ container.replaceChildren();
+ farms.forEach(f=>{
+  const card=document.createElement("div");
+  card.className="farm";
+  const heading=document.createElement("h3");
+  heading.textContent=f.name;
+  const details=document.createElement("p");
+  details.textContent=f.type+" | "+f.fields+" fields";
+  const funds=document.createElement("p");
+  funds.textContent="Funds: £"+f.money.toLocaleString("en-GB");
+  card.append(heading,details,funds);
+  container.appendChild(card);
+ });
 }
 
 function advanceYear(){
-year++;
-document.getElementById("year").textContent=year;
-let news=[];
+ year++;
+ document.getElementById("year").textContent=year;
+ const news=[];
+ farms.forEach(f=>{
+  f.money+=12000+f.fields*4500;
 
-farms.forEach(f=>{
-const income=12000+f.fields*4500;
-f.money+=income;
-let chance=.35;
-if(f.type==="Aggressive Buyer")chance=.8;
-if(f.type==="Traditionalist")chance=.2;
-if(f.type==="Specialist")chance=.3;
-if(f.type==="Family Farm")chance=.4;
+  const chances={
+   "Traditionalist":.2,
+   "Aggressive Buyer":.8,
+   "Specialist":.3,
+   "Family Farm":.4
+  };
 
-if(Math.random()<chance && f.money>=fieldPrice+15000){
-f.fields++;
-f.money-=fieldPrice;
-news.push(f.name+" purchases one neighbouring field for £35,000. It now owns "+f.fields+" fields.");
-}else if(Math.random()<.15 && f.fields>2){
-f.fields--;
-f.money+=fieldPrice;
-news.push(f.name+" sells one field to raise funds.");
-}else{
-news.push(f.name+" keeps its current land and focuses on running the farm.");
+  if(Math.random()<chances[f.type]&&f.money>=fieldPrice+15000){
+   f.fields++;
+   f.money-=fieldPrice;
+   news.push(f.name+" buys one neighbouring field for £35,000.");
+  }else if(Math.random()<.12&&f.fields>2){
+   f.fields--;
+   f.money+=fieldPrice;
+   news.push(f.name+" sells one field to raise funds.");
+  }else{
+   news.push(f.name+" concentrates on its existing land.");
+  }
+
+  if(Math.random()<.2){
+   const cost=2000+Math.floor(Math.random()*4000);
+   f.money-=cost;
+   news.push(f.name+" faces repair costs of £"+cost.toLocaleString("en-GB")+".");
+  }
+ });
+ renderFarms();
+ const log=document.getElementById("farmLog");
+ log.replaceChildren();
+ const heading=document.createElement("h3");
+ heading.textContent="Year "+year;
+ const list=document.createElement("ul");
+ news.forEach(item=>{
+  const li=document.createElement("li");
+  li.textContent=item;
+  list.appendChild(li);
+ });
+ log.append(heading,list);
 }
 
-if(Math.random()<.2){
-const repair=2000+Math.floor(Math.random()*4000);
-f.money-=repair;
-news.push(f.name+" faces unexpected repair costs of £"+repair.toLocaleString("en-GB")+".");
-}
-});
-
-renderFarms();
-document.getElementById("farmLog").innerHTML=
-"<h4>Year "+year+"</h4><ul>"+
-news.map(n=>"<li>"+n+"</li>").join("")+"</ul>";
-}
-
-function unlock(){
-const entered=document.getElementById("password").value.trim().toUpperCase();
-const message=document.getElementById("passwordMessage");
-const content=document.getElementById("ownerContent");
-if(entered==="FARM25"){
-message.textContent="Password accepted!";
-message.style.color="green";
-content.style.display="block";
-}else{
-message.textContent="Incorrect password. Please try again.";
-message.style.color="red";
-content.style.display="none";
-}
-}
-
-document.getElementById("password").addEventListener("keydown",e=>{
-if(e.key==="Enter")unlock();
-});
-
+document.getElementById("copyrightYear").textContent=new Date().getFullYear();
 resetFarms();
 </script>
+
 </body>
 </html>
