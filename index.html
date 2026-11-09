@@ -4,350 +4,146 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Farm Random Events Generator</title>
-
+<title>Farm Roleplay Hub | Farming Simulator Guides</title>
 <style>
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #edf3e8;
-  color: #173322;
-}
-
-header {
-  background: #205c32;
-  color: white;
-  text-align: center;
-  padding: 35px 20px;
-}
-
-header h1 {
-  font-size: 34px;
-  margin: 0 0 10px;
-}
-
-header p {
-  margin: 0;
-  color: #d8e7d8;
-}
-
-main {
-  max-width: 570px;
-  margin: 30px auto;
-  padding: 0 16px;
-}
-
-.panel {
-  background: white;
-  padding: 25px;
-  border-radius: 15px;
-  box-shadow: 0 5px 18px #00000012;
-}
-
-label {
-  display: block;
-  font-weight: bold;
-  margin-bottom: 10px;
-}
-
-select {
-  width: 100%;
-  padding: 13px;
-  border: 1px solid #bfd0bc;
-  border-radius: 7px;
-  font-size: 15px;
-  background: white;
-  margin-bottom: 16px;
-}
-
-button {
-  width: 100%;
-  background: #287a3c;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 16px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-button:hover {
-  background: #1c5e2d;
-}
-
-.event {
-  background: #f0f5ec;
-  border-left: 4px solid #287a3c;
-  border-radius: 8px;
-  padding: 20px;
-  margin-top: 22px;
-  min-height: 160px;
-}
-
-.category {
-  color: #287a3c;
-  font-size: 13px;
-  font-weight: bold;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-
-.event h2 {
-  font-size: 23px;
-  margin: 12px 0;
-}
-
-.event p {
-  line-height: 1.6;
-}
-
-.rule {
-  font-weight: bold;
-  margin-top: 16px;
-}
-
-footer {
-  text-align: center;
-  color: #687d6a;
-  font-size: 12px;
-  padding: 15px 20px 35px;
-}
-
-@media (max-width: 500px) {
-  header h1 {
-    font-size: 27px;
-  }
-
-  .panel {
-    padding: 18px;
-  }
-}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f3f5f0;color:#26352b}
+header{background:#193e2a;color:white;padding:20px;text-align:center}
+header h1{margin:0;font-size:28px}
+nav{background:#285638;padding:13px;text-align:center}
+nav a{color:white;text-decoration:none;margin:0 15px;font-weight:bold}
+.hero{background:linear-gradient(120deg,#214e32,#6b8e48);color:white;padding:70px 20px;text-align:center}
+.hero h2{font-size:34px;margin:0 0 15px}
+.hero p{max-width:650px;margin:auto;line-height:1.6}
+.container{max-width:1050px;margin:auto;padding:35px 20px}
+h2{color:#245a34}
+.books{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:25px}
+.card{background:white;border-radius:12px;padding:25px;box-shadow:0 3px 12px #0001}
+.cover{background:#dce8d8;padding:55px 15px;text-align:center;border-radius:8px;font-weight:bold;color:#245a34}
+.btn{display:inline-block;background:#27643a;color:white;border:0;border-radius:6px;padding:13px 20px;text-decoration:none;cursor:pointer;font-weight:bold;margin-top:15px}
+.btn:hover{background:#194b2b}
+input{padding:13px;border:1px solid #aaa;border-radius:6px;width:100%;max-width:350px;font-size:16px}
+#unlocked{display:none;margin-top:20px;padding:20px;background:#e4f3df;border-radius:8px}
+footer{background:#193e2a;color:white;text-align:center;padding:25px;margin-top:30px}
+small{color:#666}
+@media(max-width:600px){nav a{display:inline-block;margin:7px}.hero h2{font-size:26px}}
 </style>
 </head>
-
 <body>
 
 <header>
-  <h1>🚜 Farm Random Events</h1>
-  <p>A gameplay companion for Farming Simulator 25</p>
+<h1>🚜 FARM ROLEPLAY HUB</h1>
+<p>Realistic Farming. Your Rules. Your Story.</p>
 </header>
 
-<main>
-  <div class="panel">
+<nav>
+<a href="#home">Home</a>
+<a href="#books">Our Books</a>
+<a href="#owners">Book Owners</a>
+</nav>
 
-    <label for="categorySelect">
-      Choose an event category
-    </label>
+<section class="hero" id="home">
+<h2>Take Your Farming Simulator Experience Further</h2>
+<p>
+Discover realistic gameplay guides, farming challenges,
+roleplaying systems and exclusive interactive tools
+designed to make every farming experience different.
+</p>
+<a class="btn" href="#books">Explore Our Books</a>
+</section>
 
-    <select id="categorySelect">
-      <option value="All">All Categories</option>
-      <option value="Weather">Weather</option>
-      <option value="Fields">Fields</option>
-      <option value="Machinery">Machinery</option>
-      <option value="Animals">Animals</option>
-      <option value="Financial">Financial</option>
-      <option value="Community">Community</option>
-    </select>
+<main class="container">
 
-    <button onclick="generateEvent()">
-      🎲 Generate Random Event
-    </button>
+<section id="books">
+<h2>Our Farming Simulator Books</h2>
+<div class="books">
 
-    <div class="event" aria-live="polite">
+<div class="card">
+<div class="cover">
+FARMING SIMULATOR 25<br>
+ULTIMATE GAMEPLAY GUIDE
+</div>
+<h3>Farming Simulator 25: The Ultimate Gameplay Guide</h3>
+<p>Realistic farming rules, campaigns, random events,
+livestock management and much more.</p>
+<p><strong>By Mark Sharpe</strong></p>
+<a class="btn" href="https://www.amazon.co.uk/" target="_blank" rel="noopener noreferrer">Amazon (Link Coming Soon)</a>
+</div>
 
-      <div class="category" id="eventCategory">
-        READY TO PLAY
-      </div>
+<div class="card">
+<div class="cover">
+FARMING SIMULATOR 25<br>
+REALISTIC ROLEPLAYING GUIDE
+</div>
+<h3>Farming Simulator 25: Realistic Roleplaying Guide</h3>
+<p>Bring more depth, realism and imagination to your
+Farming Simulator gameplay.</p>
+<p><strong>By Mark Sharpe</strong></p>
+<a class="btn" href="https://www.amazon.co.uk/" target="_blank" rel="noopener noreferrer">Amazon (Link Coming Soon)</a>
+</div>
 
-      <h2 id="eventTitle">
-        Your next farm event awaits!
-      </h2>
+</div>
+</section>
 
-      <p id="eventDescription">
-        Choose a category and press the button
-        to discover what happens on your farm.
-      </p>
+<section id="owners" style="margin-top:55px">
+<h2>🔒 Exclusive Book Owners' Area</h2>
 
-      <p class="rule" id="eventRule">
-        Every farming day brings a new challenge.
-      </p>
+<div class="card">
+<p>
+Purchased the Ultimate Gameplay Guide?
+Enter the password printed inside your book
+to access exclusive bonus content.
+</p>
 
-    </div>
-  </div>
+<input type="password" id="password" placeholder="Enter book password">
+<br>
+<button class="btn" onclick="unlock()">Unlock Bonus Content</button>
+
+<p id="error" style="color:#b00020"></p>
+
+<div id="unlocked">
+<h3>Welcome, Book Owner!</h3>
+<p>Your Random Event Generator is ready.</p>
+
+<a class="btn"
+href="https://farmrandomevents.github.io/farmrandomevents/"
+target="_blank" rel="noopener noreferrer">
+Open Random Event Generator
+</a>
+
+<p><small>More exclusive gameplay tools coming in future updates.</small></p>
+</div>
+</div>
+</section>
+
 </main>
 
 <footer>
-  Unofficial fan-made gameplay companion.
-  Not affiliated with GIANTS Software.
+<p>Farm Roleplay Hub</p>
+<p>Farming Simulator Guides & Gameplay Tools by Mark Sharpe</p>
+<p><small style="color:#ddd">
+Independent fan-created guides. Not affiliated with or endorsed by GIANTS Software.
+</small></p>
 </footer>
 
 <script>
+function unlock(){
+const password=document.getElementById("password").value.trim();
+const unlocked=document.getElementById("unlocked");
+const error=document.getElementById("error");
 
-const events = [
-
-  {
-    category: "Weather",
-    title: "Heavy Rainfall",
-    description:
-      "Persistent rain has left your fields waterlogged.",
-    rule:
-      "Suspend all fieldwork for one in-game day."
-  },
-
-  {
-    category: "Weather",
-    title: "Unexpected Dry Spell",
-    description:
-      "A prolonged period of dry weather has affected your plans.",
-    rule:
-      "Delay your next planting operation by one in-game day."
-  },
-
-  {
-    category: "Fields",
-    title: "Field Inspection",
-    description:
-      "One of your fields requires an unexpected inspection.",
-    rule:
-      "Inspect your fields and complete any outstanding maintenance."
-  },
-
-  {
-    category: "Fields",
-    title: "Soil Management",
-    description:
-      "A field needs extra attention before the next crop.",
-    rule:
-      "Complete any required field preparation before planting."
-  },
-
-  {
-    category: "Machinery",
-    title: "Tractor Breakdown",
-    description:
-      "Your main tractor has developed a mechanical fault.",
-    rule:
-      "Visit the workshop before using it again."
-  },
-
-  {
-    category: "Machinery",
-    title: "Equipment Service",
-    description:
-      "One of your machines is due for servicing.",
-    rule:
-      "Service your most-used machine before its next job."
-  },
-
-  {
-    category: "Animals",
-    title: "Livestock Health Check",
-    description:
-      "Your livestock require additional attention.",
-    rule:
-      "Check animal feed, water and bedding before continuing."
-  },
-
-  {
-    category: "Animals",
-    title: "Extra Feed Required",
-    description:
-      "Your livestock need additional supplies.",
-    rule:
-      "Purchase one extra load of animal feed."
-  },
-
-  {
-    category: "Financial",
-    title: "Unexpected Farm Expense",
-    description:
-      "An unexpected maintenance bill has arrived.",
-    rule:
-      "Deduct £2,000 from your farm funds."
-  },
-
-  {
-    category: "Financial",
-    title: "Equipment Replacement Fund",
-    description:
-      "Your farm accountant recommends setting aside extra money.",
-    rule:
-      "Reserve £1,000 of your farm funds for future equipment repairs."
-  },
-
-  {
-    category: "Community",
-    title: "Neighbour Needs Help",
-    description:
-      "A neighbouring farmer urgently needs assistance.",
-    rule:
-      "Complete one contract before returning to your own fieldwork."
-  },
-
-  {
-    category: "Community",
-    title: "Local Farming Initiative",
-    description:
-      "The local farming community is organising a work day.",
-    rule:
-      "Complete one community contract this month."
-  }
-
-];
-
-let lastEventIndex = -1;
-
-function generateEvent() {
-
-  const selectedCategory =
-    document.getElementById("categorySelect").value;
-
-  const matchingEvents = events
-    .map((event, index) => ({ event, index }))
-    .filter(item =>
-      selectedCategory === "All" ||
-      item.event.category === selectedCategory
-    );
-
-  if (matchingEvents.length === 0) {
-    return;
-  }
-
-  let availableEvents = matchingEvents.filter(
-    item => item.index !== lastEventIndex
-  );
-
-  if (availableEvents.length === 0) {
-    availableEvents = matchingEvents;
-  }
-
-  const randomIndex = Math.floor(
-    Math.random() * availableEvents.length
-  );
-
-  const selected = availableEvents[randomIndex];
-
-  lastEventIndex = selected.index;
-
-  document.getElementById("eventCategory").textContent =
-    selected.event.category;
-
-  document.getElementById("eventTitle").textContent =
-    selected.event.title;
-
-  document.getElementById("eventDescription").textContent =
-    selected.event.description;
-
-  document.getElementById("eventRule").textContent =
-    "Challenge: " + selected.event.rule;
-
+if(password.toUpperCase()==="FARM25"){
+unlocked.style.display="block";
+error.textContent="";
+}else{
+unlocked.style.display="none";
+error.textContent="Incorrect password. Please try again.";
+}
 }
 
+document.getElementById("password").addEventListener("keydown",function(e){
+if(e.key==="Enter")unlock();
+});
 </script>
 
 </body>
