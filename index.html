@@ -2,189 +2,352 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Farm Random Events Generator</title>
-  <style>
-    * { box-sizing: border-box; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Farm Random Events Generator</title>
 
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #edf3e8;
-      color: #233524;
-      text-align: center;
-    }
+<style>
+* {
+  box-sizing: border-box;
+}
 
-    header {
-      background: #225c30;
-      color: white;
-      padding: 35px 20px;
-    }
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #edf3e8;
+  color: #173322;
+}
 
-    h1 { margin: 0 0 12px; }
+header {
+  background: #205c32;
+  color: white;
+  text-align: center;
+  padding: 35px 20px;
+}
 
-    main {
-      max-width: 650px;
-      margin: 35px auto;
-      padding: 0 18px;
-    }
+header h1 {
+  font-size: 34px;
+  margin: 0 0 10px;
+}
 
-    .card {
-      background: white;
-      border-radius: 14px;
-      padding: 30px 24px;
-      box-shadow: 0 4px 16px #00000018;
-      margin-bottom: 25px;
-    }
+header p {
+  margin: 0;
+  color: #d8e7d8;
+}
 
-    .category {
-      color: #387d41;
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
+main {
+  max-width: 570px;
+  margin: 30px auto;
+  padding: 0 16px;
+}
 
-    #eventTitle { font-size: 26px; }
+.panel {
+  background: white;
+  padding: 25px;
+  border-radius: 15px;
+  box-shadow: 0 5px 18px #00000012;
+}
 
-    #eventRule {
-      background: #edf3e8;
-      padding: 15px;
-      border-radius: 8px;
-      margin-top: 20px;
-    }
+label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
 
-    button {
-      background: #327a39;
-      color: white;
-      border: none;
-      border-radius: 9px;
-      padding: 17px 28px;
-      font-size: 18px;
-      font-weight: bold;
-      cursor: pointer;
-    }
+select {
+  width: 100%;
+  padding: 13px;
+  border: 1px solid #bfd0bc;
+  border-radius: 7px;
+  font-size: 15px;
+  background: white;
+  margin-bottom: 16px;
+}
 
-    button:hover { background: #205c2b; }
+button {
+  width: 100%;
+  background: #287a3c;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
 
-    footer {
-      color: #647064;
-      font-size: 13px;
-      padding: 25px;
-    }
-  </style>
+button:hover {
+  background: #1c5e2d;
+}
+
+.event {
+  background: #f0f5ec;
+  border-left: 4px solid #287a3c;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 22px;
+  min-height: 160px;
+}
+
+.category {
+  color: #287a3c;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.event h2 {
+  font-size: 23px;
+  margin: 12px 0;
+}
+
+.event p {
+  line-height: 1.6;
+}
+
+.rule {
+  font-weight: bold;
+  margin-top: 16px;
+}
+
+footer {
+  text-align: center;
+  color: #687d6a;
+  font-size: 12px;
+  padding: 15px 20px 35px;
+}
+
+@media (max-width: 500px) {
+  header h1 {
+    font-size: 27px;
+  }
+
+  .panel {
+    padding: 18px;
+  }
+}
+</style>
 </head>
+
 <body>
 
 <header>
   <h1>🚜 Farm Random Events</h1>
-  <p>Farming Simulator 25 Gameplay Companion</p>
+  <p>A gameplay companion for Farming Simulator 25</p>
 </header>
 
 <main>
-  <div class="card">
-    <p class="category" id="category">Ready to play?</p>
+  <div class="panel">
 
-    <h2 id="eventTitle">Your next farm event awaits!</h2>
+    <label for="categorySelect">
+      Choose an event category
+    </label>
 
-    <p id="description">
-      Press the button to discover what happens
-      next on your farm.
-    </p>
+    <select id="categorySelect">
+      <option value="All">All Categories</option>
+      <option value="Weather">Weather</option>
+      <option value="Fields">Fields</option>
+      <option value="Machinery">Machinery</option>
+      <option value="Animals">Animals</option>
+      <option value="Financial">Financial</option>
+      <option value="Community">Community</option>
+    </select>
 
-    <div id="eventRule">
-      Random events make every farming day different.
+    <button onclick="generateEvent()">
+      🎲 Generate Random Event
+    </button>
+
+    <div class="event" aria-live="polite">
+
+      <div class="category" id="eventCategory">
+        READY TO PLAY
+      </div>
+
+      <h2 id="eventTitle">
+        Your next farm event awaits!
+      </h2>
+
+      <p id="eventDescription">
+        Choose a category and press the button
+        to discover what happens on your farm.
+      </p>
+
+      <p class="rule" id="eventRule">
+        Every farming day brings a new challenge.
+      </p>
+
     </div>
   </div>
-
-  <button onclick="generateEvent()">
-    🎲 Generate Random Event
-  </button>
 </main>
 
 <footer>
-  Companion to Farming Simulator 25:
-  The Ultimate Gameplay Guide
-  <br>
-  Independent fan-made gameplay tool.
+  Unofficial fan-made gameplay companion.
+  Not affiliated with GIANTS Software.
 </footer>
 
 <script>
+
 const events = [
+
   {
     category: "Weather",
     title: "Heavy Rainfall",
-    description: "Persistent rain has left your fields waterlogged.",
-    rule: "Suspend all fieldwork for one in-game day."
+    description:
+      "Persistent rain has left your fields waterlogged.",
+    rule:
+      "Suspend all fieldwork for one in-game day."
   },
-  {
-    category: "Machinery",
-    title: "Tractor Breakdown",
-    description: "Your main tractor has developed a mechanical fault.",
-    rule: "Visit the workshop and pay for repairs before using it again."
-  },
-  {
-    category: "Animals",
-    title: "Livestock Health Check",
-    description: "Your livestock require additional attention.",
-    rule: "Check all animal feed, water and bedding before continuing."
-  },
-  {
-    category: "Financial",
-    title: "Unexpected Farm Expense",
-    description: "An unexpected maintenance bill has arrived.",
-    rule: "Deduct £2,000 from your farm funds."
-  },
-  {
-    category: "Community",
-    title: "Neighbour Needs Help",
-    description: "A neighbouring farmer urgently needs assistance.",
-    rule: "Complete one contract before returning to your own fieldwork."
-  },
-  {
-    category: "Fields",
-    title: "Field Inspection",
-    description: "A field requires an unexpected inspection.",
-    rule: "Inspect your fields and complete any outstanding maintenance."
-  },
-  {
-    category: "Machinery",
-    title: "Equipment Service",
-    description: "One of your machines is due for servicing.",
-    rule: "Service your most-used machine before its next job."
-  },
+
   {
     category: "Weather",
     title: "Unexpected Dry Spell",
-    description: "Dry weather has affected your farming plans.",
-    rule: "Delay your next planting operation by one in-game day."
+    description:
+      "A prolonged period of dry weather has affected your plans.",
+    rule:
+      "Delay your next planting operation by one in-game day."
+  },
+
+  {
+    category: "Fields",
+    title: "Field Inspection",
+    description:
+      "One of your fields requires an unexpected inspection.",
+    rule:
+      "Inspect your fields and complete any outstanding maintenance."
+  },
+
+  {
+    category: "Fields",
+    title: "Soil Management",
+    description:
+      "A field needs extra attention before the next crop.",
+    rule:
+      "Complete any required field preparation before planting."
+  },
+
+  {
+    category: "Machinery",
+    title: "Tractor Breakdown",
+    description:
+      "Your main tractor has developed a mechanical fault.",
+    rule:
+      "Visit the workshop before using it again."
+  },
+
+  {
+    category: "Machinery",
+    title: "Equipment Service",
+    description:
+      "One of your machines is due for servicing.",
+    rule:
+      "Service your most-used machine before its next job."
+  },
+
+  {
+    category: "Animals",
+    title: "Livestock Health Check",
+    description:
+      "Your livestock require additional attention.",
+    rule:
+      "Check animal feed, water and bedding before continuing."
+  },
+
+  {
+    category: "Animals",
+    title: "Extra Feed Required",
+    description:
+      "Your livestock need additional supplies.",
+    rule:
+      "Purchase one extra load of animal feed."
+  },
+
+  {
+    category: "Financial",
+    title: "Unexpected Farm Expense",
+    description:
+      "An unexpected maintenance bill has arrived.",
+    rule:
+      "Deduct £2,000 from your farm funds."
+  },
+
+  {
+    category: "Financial",
+    title: "Equipment Replacement Fund",
+    description:
+      "Your farm accountant recommends setting aside extra money.",
+    rule:
+      "Reserve £1,000 of your farm funds for future equipment repairs."
+  },
+
+  {
+    category: "Community",
+    title: "Neighbour Needs Help",
+    description:
+      "A neighbouring farmer urgently needs assistance.",
+    rule:
+      "Complete one contract before returning to your own fieldwork."
+  },
+
+  {
+    category: "Community",
+    title: "Local Farming Initiative",
+    description:
+      "The local farming community is organising a work day.",
+    rule:
+      "Complete one community contract this month."
   }
+
 ];
 
-let lastEvent = -1;
+let lastEventIndex = -1;
 
 function generateEvent() {
-  let index;
 
-  do {
-    index = Math.floor(Math.random() * events.length);
-  } while (index === lastEvent && events.length > 1);
+  const selectedCategory =
+    document.getElementById("categorySelect").value;
 
-  lastEvent = index;
-  const event = events[index];
+  const matchingEvents = events
+    .map((event, index) => ({ event, index }))
+    .filter(item =>
+      selectedCategory === "All" ||
+      item.event.category === selectedCategory
+    );
 
-  document.getElementById("category").textContent =
-    event.category;
+  if (matchingEvents.length === 0) {
+    return;
+  }
+
+  let availableEvents = matchingEvents.filter(
+    item => item.index !== lastEventIndex
+  );
+
+  if (availableEvents.length === 0) {
+    availableEvents = matchingEvents;
+  }
+
+  const randomIndex = Math.floor(
+    Math.random() * availableEvents.length
+  );
+
+  const selected = availableEvents[randomIndex];
+
+  lastEventIndex = selected.index;
+
+  document.getElementById("eventCategory").textContent =
+    selected.event.category;
 
   document.getElementById("eventTitle").textContent =
-    event.title;
+    selected.event.title;
 
-  document.getElementById("description").textContent =
-    event.description;
+  document.getElementById("eventDescription").textContent =
+    selected.event.description;
 
   document.getElementById("eventRule").textContent =
-    "Your challenge: " + event.rule;
+    "Challenge: " + selected.event.rule;
+
 }
+
 </script>
 
 </body>
