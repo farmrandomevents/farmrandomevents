@@ -67,6 +67,7 @@ function readState() {
   }
 }
 let farm = readState();
+let mobileView = 'inbox';
 const monthName = () => months[farm.month];
 const period = () => `${monthName()} · Year ${farm.year}`;
 const dateStamp = () => `${period()} · Day ${farm.day}`;
@@ -104,15 +105,18 @@ function notify(contact, text) {
 }
 function message(contact, text, extra = {}) {
   farm.messages.push({ contact, text, date: dateStamp(), ...extra });
-  if (!extra.sent && contact !== farm.contact) farm.unread[contact] = (farm.unread[contact] || 0) + 1;
+  if (!extra.sent && (contact !== farm.contact || (mobileView === 'inbox' &&
+      window.matchMedia?.('(max-width: 690px)').matches))) farm.unread[contact] = (farm.unread[contact] || 0) + 1;
   if (!extra.sent) notify(contact, text);
 }
 function selectContact(contact) {
+  mobileView = 'chat';
   farm.contact = contact;
   farm.unread[contact] = 0;
 }
 function reply(label, action, className) {
   const contact = farm.contact;
+  $('composer-label').hidden = false;
   $('replies').append(button(label, () => {
     message(contact, label, { sent: true });
     action();
@@ -317,6 +321,7 @@ function activeIncident(contact) {
 }
 function renderReplies() {
   $('replies').replaceChildren();
+  $('composer-label').hidden = true;
   if (!farm.started) {
     $('replies').append(node('p', 'Open Farm settings to match your save, then start receiving messages.'));
     return;
@@ -402,11 +407,23 @@ function renderChat() {
   title.tabIndex = -1;
   const info = node('div');
   info.append(title, node('span', role, 'contact-role'));
-  $('chat-header').replaceChildren(avatar(farm.contact), info);
+  const back = button('‹', () => {
+    mobileView = 'inbox';
+    $('workspace').setAttribute('data-view', mobileView);
+    $('inbox-title').focus({ preventScroll: true });
+  }, 'chat-back');
+  back.setAttribute('aria-label', 'Back to messages');
+  $('chat-header').replaceChildren(back, avatar(farm.contact), info);
   const stream = $('conversation');
   const messages = farm.messages.filter(item => item.contact === farm.contact);
-  const output = messages.map(item => {
-    const bubble = node('div', item.text, item.sent ? 'bubble sent' : 'bubble');
+  const output = [];
+  let previousDate;
+  for (const item of messages) {
+    if (item.date !== previousDate) {
+      output.push(node('time', item.date, 'chat-date'));
+      previousDate = item.date;
+    }
+    const bubble = node('div', item.text, item.sent ? 'bubble sent' : 'bubble received');
     bubble.setAttribute('aria-label', item.sent ? 'You' : name);
     if (item.photo) {
       const image = node('img');
@@ -415,17 +432,20 @@ function renderChat() {
       bubble.append(image);
     }
     if (item.guidance && farm.settings.guidance) bubble.append(node('p', item.guidance, 'game-note'));
-    bubble.append(node('time', item.date));
-    return bubble;
-  });
-  if (!output.length) output.push(node('p', 'No messages yet.'));
+    output.push(bubble);
+  }
+  if (!output.length) output.push(node('p', 'No messages yet.', 'empty-chat'));
   stream.replaceChildren(...output);
   stream.scrollTop = stream.scrollHeight;
   renderReplies();
 }
 function renderContacts() {
   $('contacts').replaceChildren();
-  for (const [id, [name, role]] of Object.entries(people)) {
+  const latest = new Map();
+  for (const [index, item] of farm.messages.entries()) latest.set(item.contact, { item, index });
+  const contacts = Object.entries(people).sort(([a], [b]) =>
+    (latest.get(b)?.index ?? -1) - (latest.get(a)?.index ?? -1));
+  for (const [id, [name, role]] of contacts) {
     const contact = button('', () => {
       selectContact(id);
       save();
@@ -433,10 +453,16 @@ function renderContacts() {
       $('chat-title').focus({ preventScroll: true });
     }, 'contact');
     contact.setAttribute('aria-pressed', String(farm.contact === id));
-    const label = node('span', name);
-    label.append(node('small', role));
+    const last = latest.get(id)?.item;
+    const preview = last ? (last.sent ? 'You: ' : '') + last.text.split('\n')[0] : role;
+    const label = node('span', undefined, 'contact-copy');
+    label.append(node('strong', name), node('small', preview));
     contact.append(avatar(id), label);
-    if (farm.unread[id]) contact.append(node('span', String(farm.unread[id]), 'unread'));
+    if (farm.unread[id]) {
+      const unread = node('span', String(farm.unread[id]), 'unread');
+      unread.setAttribute('aria-label', `${farm.unread[id]} unread`);
+      contact.append(unread);
+    }
     $('contacts').append(contact);
   }
   $('restrictions').replaceChildren(...farm.incidents.filter(item =>
@@ -472,6 +498,7 @@ function renderAccounts() {
   $('staff-list').replaceChildren(...employees);
 }
 function render() {
+  $('workspace').setAttribute('data-view', mobileView);
   $('date').textContent = period();
   $('day').textContent = `Day ${farm.day} of ${farm.days}`;
   $('advance').textContent = !farm.started ? 'Start farm messages' :
@@ -514,9 +541,11 @@ $('settings').addEventListener('submit', event => {
   render();
 });
 $('advance').addEventListener('click', () => {
+  const starting = !farm.started;
+  if (starting) selectContact('mechanic');
   nextDay();
   settings.start.disabled = true;
-  if (farm.day === farm.days && farm.contact === 'accountant') $('chat-title').focus({ preventScroll: true });
+  if (starting || (farm.day === farm.days && farm.contact === 'accountant')) $('chat-title').focus({ preventScroll: true });
 });
 
 const entry = $('entry').elements;
@@ -583,6 +612,7 @@ $('reset').addEventListener('click', () => {
 $('reset-dialog').addEventListener('close', () => {
   if ($('reset-dialog').returnValue !== 'reset') return;
   farm = fresh();
+  mobileView = 'inbox';
   $('notify').textContent = 'Enable browser notifications';
   $('notify-status').textContent = 'Notifications are available while this page is open on supported browsers.';
   loadSettings();
