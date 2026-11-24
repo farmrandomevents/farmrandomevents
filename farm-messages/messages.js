@@ -9,13 +9,13 @@ const pounds = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GB
 const money = pennies => pounds.format(pennies / 100).replace(/\.00$/, '');
 const choose = list => list[Math.floor(Math.random() * list.length)];
 const people = {
-  mechanic: ['Tom Bennett', 'Mechanic', '👨‍🔧'],
-  dealer: ['Hannah Reed', 'Machinery dealer', '👩‍💼'],
-  vet: ['Priya Shah', 'Vet', '👩‍⚕️'],
-  supplier: ['Jo Ellis', 'Feed and supplies', '👩‍🌾'],
-  neighbour: ['George Miller', 'Neighbour', '🧑‍🌾'],
-  worker: ['Sam Cooper', 'Farmhand', '👨‍🌾'],
-  accountant: ['Helen Carter', 'Accountant', '👩‍💻'],
+  mechanic: ['Tom Bennett', 'Mechanic'],
+  dealer: ['Hannah Reed', 'Machinery dealer'],
+  vet: ['Priya Shah', 'Vet'],
+  supplier: ['Jo Ellis', 'Feed and supplies'],
+  neighbour: ['George Miller', 'Neighbour'],
+  worker: ['Sam Cooper', 'Farmhand'],
+  accountant: ['Helen Carter', 'Accountant'],
 };
 const tractor = 'machinery/machinery-workshop.webp';
 const catalogue = [
@@ -36,7 +36,7 @@ const catalogue = [
   { contact: 'neighbour', type: 'expense', photo: 'community/category-9.webp', amounts: [200, 400], reason: 'Contractor work',
     text: 'I’m finishing a job down the road and could bring the hedge cutter over. Do you want me to pencil you in?' },
   { contact: 'neighbour', type: 'income', amounts: [300, 500], reason: 'Agricultural show prize', season: [5, 6, 7, 8],
-    text: 'Had a ring from the show secretary. You’ve won a cash prize! I’ve asked Helen to put it in the accounts.' },
+    text: 'Had a ring from the show secretary. You’ve won a cash prize! I’ve asked your accountant to put it in the accounts.' },
   { contact: 'worker', type: 'note', season: [5, 6, 7, 8],
     text: 'I’ve checked the yard and put the spare fuel cans away. Let me know if you want a hand getting ready for harvest.' },
   { contact: 'worker', type: 'note', sheep: true,
@@ -53,21 +53,31 @@ const catalogue = [
 function fresh() {
   return {
     month: 2, year: 1, day: 1, tick: 0, started: false, contact: 'mechanic',
-    settings: { start: 2, days: 3, frequency: '1', billing: 1, guidance: false, animals: false, sheep: false, sync: false },
+    settings: { start: 2, days: 3, frequency: 'random', billing: 1, guidance: false, animals: false, sheep: false, sync: false },
     days: 3, billing: 1, billingMonths: 0, serial: 0,
     queue: [], messages: [], incidents: [], ledger: [], staff: [], statements: [], unread: {},
-    monthClosed: false, imported: [], notifications: false,
+    monthClosed: false, imported: [], notifications: false, sound: true, names: {},
   };
 }
 function readState() {
   try {
-    return JSON.parse(localStorage.getItem(saveKey)) || fresh();
+    return { ...fresh(), ...JSON.parse(localStorage.getItem(saveKey)) };
   } catch {
     return fresh();
   }
 }
 let farm = readState();
 let messageView = 'inbox';
+let audio;
+let deliveryTimer;
+let toastTimer;
+const contactName = id => farm.names[id] || people[id][0];
+const wideChat = matchMedia('(min-width: 691px)');
+const chatOpen = () => wideChat.matches || messageView === 'chat';
+const entrySource = source => {
+  const contact = Object.keys(people).find(id => people[id][0] === source);
+  return contact ? contactName(contact) : source;
+};
 const monthName = () => months[farm.month];
 const period = () => `${monthName()} · Year ${farm.year}`;
 const dateStamp = () => `${period()} · Day ${farm.day}`;
@@ -94,19 +104,67 @@ function button(label, action, className) {
   element.addEventListener('click', action);
   return element;
 }
+function unlockSound() {
+  if (!farm.sound) return;
+  try {
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!audio && Audio) audio = new Audio();
+    if (audio?.state === 'suspended') audio.resume().catch(() => {});
+  } catch {}
+}
+document.addEventListener('pointerdown', unlockSound);
+document.addEventListener('keydown', unlockSound);
+function chime() {
+  if (!farm.sound || audio?.state !== 'running') return;
+  [660, 880].forEach((frequency, index) => {
+    const start = audio.currentTime + index * .1;
+    const tone = audio.createOscillator();
+    const volume = audio.createGain();
+    tone.type = 'sine';
+    tone.frequency.value = frequency;
+    volume.gain.setValueAtTime(.001, start);
+    volume.gain.exponentialRampToValueAtTime(.22, start + .015);
+    volume.gain.exponentialRampToValueAtTime(.001, start + .22);
+    tone.connect(volume).connect(audio.destination);
+    tone.start(start);
+    tone.stop(start + .23);
+  });
+}
 function notify(contact, text) {
+  chime();
+  const alert = button('', () => {
+    selectContact(contact);
+    $('toast-region').replaceChildren();
+    $('farm-tools').close();
+    save();
+    render();
+    $('chat-title').focus();
+  }, 'toast');
+  const copy = node('span');
+  copy.append(node('strong', contactName(contact)), node('small', text.split('\n')[0]));
+  alert.append(avatar(contact), copy);
+  $('toast-region').replaceChildren(alert);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $('toast-region').replaceChildren(), 7000);
   if (!farm.notifications || !document.hidden || !('Notification' in window) ||
       Notification.permission !== 'granted') return;
   try {
-    new Notification(`Farm Messages · ${people[contact][0]}`, { body: text });
-  } catch {
-    // Some mobile browsers require a service worker to display notifications.
-  }
+    const notification = new Notification(contactName(contact), {
+      body: text, icon: portraitPath(contact), silent: true,
+    });
+    notification.onclick = () => {
+      window.focus();
+      alert.click();
+      notification.close();
+    };
+  } catch {}
 }
 function message(contact, text, extra = {}) {
   farm.messages.push({ contact, text, date: dateStamp(), ...extra });
-  if (!extra.sent && (contact !== farm.contact || messageView === 'inbox')) farm.unread[contact] = (farm.unread[contact] || 0) + 1;
-  if (!extra.sent) notify(contact, text);
+  if (!extra.sent && (document.hidden || contact !== farm.contact || !chatOpen())) {
+    farm.unread[contact] = (farm.unread[contact] || 0) + 1;
+  }
+  if (extra.arrival) notify(contact, text);
 }
 function selectContact(contact) {
   messageView = 'chat';
@@ -201,20 +259,20 @@ function planMonth(first = false) {
     scheduled.push(choose(weighted));
   }
   farm.queue = scheduled.map((event, index) => ({
-    event, day: first && index === 0 ? 1 : 1 + Math.floor(Math.random() * farm.days),
+    event, day: index === 0 ? 1 : 1 + Math.floor(Math.random() * farm.days),
   }));
 }
 function offer(event) {
   const amount = choose(event.amounts || [0]) * 100;
-  const info = { photo: event.photo, guidance: event.guidance };
+  const info = { photo: event.photo, guidance: event.guidance, arrival: true };
   const source = people[event.contact][0];
   if (event.type === 'income' || event.type === 'credit') {
     addEntry(source, event.reason, amount, event.type);
-    message(event.contact, `${event.text} ${money(amount)}.`, info);
+    message(event.contact, `${event.text} ${money(amount)}.`, { ...info, pending: true });
     return;
   }
   if (event.type === 'note') {
-    message(event.contact, event.text, info);
+    message(event.contact, event.text, { ...info, pending: true });
     return;
   }
   const incident = { ...event, id: nextId(), amount, stage: 'offer' };
@@ -226,22 +284,53 @@ function runDay() {
   for (const incident of farm.incidents) {
     if (incident.stage === 'deferred' && farm.tick >= incident.due) {
       incident.stage = 'offer';
-      message(incident.contact, 'Just checking whether you still want that service. Happy to leave it with you.');
+      message(incident.contact, incident.type === 'repair' ?
+        `Can you bring the ${incident.item} over today?` :
+        'Just checking whether you still want that service. Happy to leave it with you.', { arrival: true });
     } else if (incident.stage === 'repairing' && farm.tick >= incident.due) {
       if (incident.delay) {
         incident.delay = false;
         incident.due += 2;
-        message(incident.contact, `Bit more to it than I thought. I’ll need another two days on the ${incident.item}. The quote still stands.`);
+        message(incident.contact, `Bit more to it than I thought. I’ll need another two days on the ${incident.item}. The quote still stands.`, { arrival: true, pending: true });
       } else {
         incident.stage = 'closed';
         addEntry(people[incident.contact][0], `${incident.item} repair`, incident.amount);
-        message(incident.contact, `The ${incident.item} is fixed and ready to collect. I’ve sent the invoice to Helen.`);
+        message(incident.contact, `The ${incident.item} is fixed and ready to collect. I’ve sent the invoice to your accountant.`, { arrival: true, pending: true });
       }
     }
   }
-  for (const item of farm.queue.filter(item => item.day === farm.day)) offer(item.event);
-  farm.queue = farm.queue.filter(item => item.day !== farm.day);
   importRewards();
+  scheduleDeliveries();
+}
+function scheduleDeliveries() {
+  clearTimeout(deliveryTimer);
+  if (!farm.started || farm.monthClosed) return;
+  const today = farm.queue.filter(item => item.day <= farm.day);
+  if (!today.length) return;
+  let due = Date.now() + 2000 + Math.floor(Math.random() * 3000);
+  for (const item of today) {
+    item.due ??= due;
+    due = Math.max(item.due, due) + 3500 + Math.floor(Math.random() * 6500);
+  }
+  const next = today.reduce((earliest, item) => item.due < earliest.due ? item : earliest);
+  deliveryTimer = setTimeout(() => {
+    // Check the persisted queue so a second open tab cannot deliver the same message.
+    let delivery = next;
+    try {
+      const stored = localStorage.getItem(saveKey);
+      if (stored) {
+        farm = { ...fresh(), ...JSON.parse(stored) };
+        delivery = farm.queue.find(item => item.due === next.due && item.day === next.day);
+      }
+    } catch {}
+    if (delivery) {
+      farm.queue = farm.queue.filter(item => item !== delivery);
+      offer(delivery.event);
+    }
+    scheduleDeliveries();
+    save();
+    render();
+  }, Math.max(0, next.due - Date.now()));
 }
 function beginMonth(first = false) {
   farm.started = true;
@@ -252,6 +341,7 @@ function beginMonth(first = false) {
   runDay();
 }
 function nextDay() {
+  if (farm.queue.some(item => item.day <= farm.day)) return;
   if (!farm.started) {
     beginMonth(true);
   } else if (farm.day < farm.days) {
@@ -259,12 +349,13 @@ function nextDay() {
     farm.tick++;
     runDay();
   } else {
-    selectContact('accountant');
+    selectContact(needsReply()[0] || 'accountant');
   }
   save();
   render();
 }
 function nextMonth() {
+  if (!farm.monthClosed || monthBlocked()) return;
   if (++farm.month === 12) {
     farm.month = 0;
     farm.year++;
@@ -273,6 +364,7 @@ function nextMonth() {
   beginMonth();
 }
 function closeMonth() {
+  if (farm.monthClosed || monthBlocked()) return;
   importRewards();
   for (const employee of farm.staff) {
     const share = Math.floor(employee.salary / 12);
@@ -289,7 +381,7 @@ function closeMonth() {
   const summary = [
     `Here are ${monthName()}’s figures.`, `Costs ${money(costs)} · Cash income ${money(income)}`,
     `Supplier credits recorded ${money(credits)} · Outstanding bills ${money(outstanding)}`,
-    ...entries.map(entry => `• ${entry.source} · ${entry.reason} · ${money(entry.type === 'expense' ? net(entry) : entry.amount)}${entry.applied ? ' (record only)' : ''}`),
+    ...entries.map(entry => `• ${entrySource(entry.source)} · ${entry.reason} · ${money(entry.type === 'expense' ? net(entry) : entry.amount)}${entry.applied ? ' (record only)' : ''}`),
   ];
   farm.monthClosed = true;
   message('accountant', summary.join('\n'));
@@ -309,7 +401,7 @@ function closeMonth() {
   payable.forEach(entry => { entry.statement = statement.id; });
   message('accountant', [
     `The ${monthName()} statement is due. Total to pay: ${money(statement.total)}.`,
-    ...payable.map(entry => `• ${entry.source} · ${entry.reason} · ${money(net(entry))}${entry.credit ? ` after ${money(entry.credit)} credit` : ''}`),
+    ...payable.map(entry => `• ${entrySource(entry.source)} · ${entry.reason} · ${money(net(entry))}${entry.credit ? ` after ${money(entry.credit)} credit` : ''}`),
     'Let me know once you’ve paid it in your save.',
   ].join('\n'));
 }
@@ -318,18 +410,32 @@ function activeIncident(contact) {
   return farm.incidents.find(incident => incident.contact === contact &&
     ['offer', 'drop-off'].includes(incident.stage));
 }
+function needsReply() {
+  return Object.keys(people).filter(contact => activeIncident(contact) ||
+    farm.messages.some(item => item.contact === contact && item.pending));
+}
+function monthBlocked() {
+  return needsReply().length > 0 || farm.queue.some(item => item.day <= farm.days);
+}
 function renderReplies() {
   $('replies').replaceChildren();
   $('composer-label').hidden = true;
+  $('composer-label').textContent = 'Quick reply';
   if (!farm.started) {
     $('replies').append(node('p', 'Open Farm settings to match your save, then start receiving messages.'));
     return;
   }
+  const pending = farm.messages.filter(item => item.contact === farm.contact && item.pending);
+  if (pending.length) {
+    reply('Thanks for letting me know', () => {
+      pending.forEach(item => { item.pending = false; });
+    }, 'primary');
+  }
   if (farm.contact === 'accountant') {
-    if (farm.day === farm.days && !farm.monthClosed) {
+    if (farm.day === farm.days && !farm.monthClosed && !monthBlocked()) {
       reply(`Can I have ${monthName()}’s accounts?`, closeMonth, 'primary');
     }
-    if (farm.monthClosed) reply('Thanks very much', nextMonth, 'primary');
+    if (farm.monthClosed && !monthBlocked()) reply('Thanks very much', nextMonth, 'primary');
     reply('What’s outstanding at the moment?', () => {
       importRewards();
       const amount = total(unpaid(), net);
@@ -345,13 +451,10 @@ function renderReplies() {
     }
     return;
   }
-  if (farm.monthClosed) {
-    $('replies').append(node('p', 'This month’s accounts are ready. Reply to Helen to open the next month.'));
-    return;
-  }
   const incident = activeIncident(farm.contact);
   if (!incident) {
-    $('replies').append(node('p', 'No reply needed right now.'));
+    if (!pending.length) $('replies').append(node('p', farm.monthClosed ?
+      `Reply to ${contactName('accountant')} to open the next month.` : 'No reply needed right now.'));
     return;
   }
   const contact = incident.contact;
@@ -365,17 +468,21 @@ function renderReplies() {
     return;
   }
   if (incident.type === 'repair') {
-    reply('I’ll bring it over', () => {
+    reply(`I’ll bring the ${incident.item} over`, () => {
       incident.stage = 'drop-off';
       message(contact, 'Sounds good. Text me when it’s in the workshop yard.', {
-        guidance: `Move the ${incident.item} to your chosen workshop and leave it out of use until Tom texts you.`,
+        guidance: `Move the ${incident.item} to your chosen workshop and leave it out of use until ${contactName('mechanic')} texts you.`,
       });
     }, 'primary');
-    reply('It’ll have to wait', () =>
-      message(contact, `Give me a shout when you can bring it. Leave the ${incident.item} parked meanwhile.`));
+    reply('Can we pick this up tomorrow?', () => {
+      incident.stage = 'deferred';
+      incident.due = farm.tick + 1;
+      message(contact, `Of course. Leave the ${incident.item} parked and I’ll check in tomorrow.`);
+    });
     return;
   }
   const service = incident.type === 'service';
+  $('composer-label').textContent = incident.reason || 'Quick reply';
   reply(service ? 'Yes, book me in' : 'Yes, please go ahead', () => {
     incident.stage = 'closed';
     addEntry(people[contact][0], incident.reason || 'Routine service', incident.amount);
@@ -394,13 +501,18 @@ function renderReplies() {
     message(contact, 'No problem. Give me a shout if you change your mind.');
   });
 }
+const portraitPath = contact => `portraits/${contact}.webp`;
 function avatar(contact) {
-  const icon = node('span', people[contact][2], 'avatar');
-  icon.setAttribute('aria-hidden', 'true');
-  return icon;
+  const image = node('img', undefined, 'avatar');
+  image.src = portraitPath(contact);
+  image.alt = '';
+  image.width = 48;
+  image.height = 48;
+  return image;
 }
 function renderChat() {
-  const [name, role] = people[farm.contact];
+  const name = contactName(farm.contact);
+  const role = people[farm.contact][1];
   const title = node('h2', name);
   title.id = 'chat-title';
   title.tabIndex = -1;
@@ -428,10 +540,14 @@ function renderChat() {
       const image = node('img');
       image.src = '../random-events/images/' + item.photo;
       image.alt = 'Farm scene attached to this message';
+      image.addEventListener('error', () => image.remove(), { once: true });
       bubble.append(image);
     }
     if (item.guidance && farm.settings.guidance) bubble.append(node('p', item.guidance, 'game-note'));
-    output.push(bubble);
+    const row = node('div', undefined, item.sent ? 'message-row outgoing' : 'message-row');
+    if (!item.sent) row.append(avatar(item.contact));
+    row.append(bubble);
+    output.push(row);
   }
   if (!output.length) output.push(node('p', 'No messages yet.', 'empty-chat'));
   stream.replaceChildren(...output);
@@ -444,7 +560,7 @@ function renderContacts() {
   for (const [index, item] of farm.messages.entries()) latest.set(item.contact, { item, index });
   const contacts = Object.entries(people).sort(([a], [b]) =>
     (latest.get(b)?.index ?? -1) - (latest.get(a)?.index ?? -1));
-  for (const [id, [name, role]] of contacts) {
+  for (const [id, [, role]] of contacts) {
     const contact = button('', () => {
       selectContact(id);
       save();
@@ -455,8 +571,11 @@ function renderContacts() {
     const last = latest.get(id)?.item;
     const preview = last ? (last.sent ? 'You: ' : '') + last.text.split('\n')[0] : role;
     const label = node('span', undefined, 'contact-copy');
-    label.append(node('strong', name), node('small', preview));
+    label.append(node('strong', contactName(id)), node('small', preview));
     contact.append(avatar(id), label);
+    if (activeIncident(id) || farm.messages.some(item => item.contact === id && item.pending)) {
+      contact.append(node('span', 'Reply', 'reply-badge'));
+    }
     if (farm.unread[id]) {
       const unread = node('span', String(farm.unread[id]), 'unread');
       unread.setAttribute('aria-label', `${farm.unread[id]} unread`);
@@ -467,13 +586,13 @@ function renderContacts() {
   $('restrictions').replaceChildren(...farm.incidents.filter(item =>
     item.type === 'repair' && item.stage !== 'closed').map(item =>
     node('p', `Keep the ${item.item} out of use. ${item.stage === 'repairing' ?
-      'Tom will text when it’s ready.' : 'Waiting for workshop drop-off.'}`)));
+      `${contactName('mechanic')} will text when it’s ready.` : 'Waiting for workshop drop-off.'}`)));
 }
 function renderAccounts() {
   $('balance').textContent = `${money(total(unpaid(), net))} outstanding`;
   const rows = farm.ledger.slice().reverse().map(entry => {
     const row = node('div', undefined, 'ledger-row');
-    const label = node('div', `${entry.source} · ${entry.reason}`);
+    const label = node('div', `${entrySource(entry.source)} · ${entry.reason}`);
     const status = entry.applied ? 'Record only' : entry.type === 'income' ? 'Cash income' :
       entry.type === 'credit' ? `${money(entry.remaining)} credit available` :
         entry.paid ? 'Settled' : entry.statement ? 'Due' : 'Accumulating';
@@ -500,17 +619,55 @@ function render() {
   $('workspace').setAttribute('data-view', messageView);
   $('date').textContent = period();
   $('day').textContent = `Day ${farm.day} of ${farm.days}`;
+  const waiting = farm.started && !farm.monthClosed && farm.queue.some(item => item.day <= farm.day);
+  const outstanding = needsReply();
+  $('advance').disabled = waiting;
   $('advance').textContent = !farm.started ? 'Start farm messages' :
-    farm.day < farm.days ? `Advance to Day ${farm.day + 1}` : 'Open accountant chat';
+    farm.day < farm.days ? `Advance to Day ${farm.day + 1}` :
+      outstanding.length ? 'Open unanswered chat' : 'Open accountant chat';
+  const status = waiting ? 'Incoming farm messages are due today…' :
+    farm.started && farm.day === farm.days && outstanding.length ?
+      `Reply before closing the month: ${outstanding.map(contactName).join(', ')}.` : '';
+  if ($('month-status').textContent !== status) $('month-status').textContent = status;
+  $('sound').textContent = farm.sound ? 'Sound on' : 'Sound off';
+  $('sound').setAttribute('aria-pressed', String(farm.sound));
   renderContacts();
   renderChat();
   renderAccounts();
 }
 
+for (const [id, [name, role]] of Object.entries(people)) {
+  const label = node('label', role);
+  const input = node('input');
+  input.name = id;
+  input.placeholder = name;
+  input.maxLength = 48;
+  label.append(input);
+  $('names').append(label);
+}
+$('names').append(node('button', 'Save contact names', 'primary'));
+$('names').addEventListener('submit', event => {
+  event.preventDefault();
+  farm.names = Object.fromEntries(Object.keys(people).map(id => [id, $('names').elements[id].value.trim()]));
+  $('names-status').textContent = 'Contact names saved.';
+  save();
+  render();
+});
+$('sound').addEventListener('click', () => {
+  farm.sound = !farm.sound;
+  unlockSound();
+  if (farm.sound) {
+    if (audio?.state === 'running') chime();
+    else audio?.resume().then(chime).catch(() => {});
+  }
+  save();
+  render();
+});
 const settings = $('settings').elements;
 months.forEach((month, index) => settings.start.add(new Option(month, index)));
 for (let count = 1; count <= 10; count++) settings.frequency.add(new Option(count, count));
 function loadSettings() {
+  for (const id of Object.keys(people)) $('names').elements[id].value = farm.names[id] || '';
   for (const [key, value] of Object.entries(farm.settings)) {
     if (settings[key].type === 'checkbox') settings[key].checked = value;
     else settings[key].value = value;
@@ -544,7 +701,7 @@ $('advance').addEventListener('click', () => {
   if (starting) selectContact('mechanic');
   nextDay();
   settings.start.disabled = true;
-  if (starting || (farm.day === farm.days && farm.contact === 'accountant')) $('chat-title').focus({ preventScroll: true });
+  if (starting || (farm.day === farm.days && chatOpen())) $('chat-title').focus({ preventScroll: true });
 });
 
 const entry = $('entry').elements;
@@ -613,6 +770,9 @@ $('reset-dialog').addEventListener('close', () => {
   if ($('reset-dialog').returnValue !== 'reset') return;
   $('farm-tools').close();
   farm = fresh();
+  scheduleDeliveries();
+  $('toast-region').replaceChildren();
+  $('names-status').textContent = '';
   messageView = 'inbox';
   $('notify').textContent = 'Enable browser notifications';
   $('notify-status').textContent = 'Notifications are available while this page is open on supported browsers.';
@@ -626,6 +786,7 @@ function openDemo() {
   loadSettings();
   $('notify').textContent = farm.notifications ? 'Disable browser notifications' : 'Enable browser notifications';
   importRewards();
+  scheduleDeliveries();
   save();
   render();
 }
@@ -643,6 +804,7 @@ window.addEventListener('storage', event => {
   if ($('app').hidden) return;
   if (event.key === saveKey) {
     farm = readState();
+    scheduleDeliveries();
     loadSettings();
     render();
   } else if (event.key === 'fsg-first-events-test-v1' && farm.settings.sync) {

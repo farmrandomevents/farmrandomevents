@@ -6,15 +6,15 @@
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#0a281e">
   <title>Live Farm Messages | Farming Simulator Guide</title>
-  <link rel="stylesheet" href="messages.css?v=3">
-  <script src="messages.js?v=3" defer></script>
+  <link rel="stylesheet" href="messages.css?v=4">
+  <script src="messages.js?v=4" defer></script>
 </head>
 <body>
   <header class="site-header"><a href="../index.html">Farming Simulator Guide</a><a href="../farm-events-access.html">Farm Events</a></header>
   <main>
     <header class="hero">
       <h1>Live Farm Messages</h1>
-      <p>Your mechanic, dealer and accountant are a message away.</p>
+      <p>Messages from the people who keep your farm running.</p>
     </header>
     <section id="gate" class="panel gate" aria-labelledby="gate-title">
       <h2 id="gate-title">Open the demo</h2>
@@ -29,15 +29,18 @@
         <div><strong id="date"></strong><span id="day"></span></div>
         <div class="calendar-actions">
           <button id="advance" class="primary"></button>
-          <button id="open-farm-tools" type="button" aria-label="Farm tools" title="Farm tools" aria-haspopup="dialog">⋯</button>
+          <button id="sound" type="button" aria-pressed="true">Sound on</button>
+          <button id="open-farm-tools" type="button" aria-haspopup="dialog">Farm tools</button>
         </div>
       </div>
+      <div id="toast-region" role="status" aria-live="polite"></div>
+      <p id="month-status" role="status"></p>
       <p id="save-status" role="status"></p>
       <div id="workspace" class="workspace" data-view="inbox">
         <section class="panel inbox" aria-labelledby="inbox-title">
           <h2 id="inbox-title" tabindex="-1">Messages</h2>
           <div id="contacts" aria-label="Conversations"></div>
-          
+
         </section>
         <section class="panel chat" aria-labelledby="chat-title">
           <header id="chat-header"></header>
@@ -80,6 +83,13 @@
           </div>
         </details>
         <details class="panel">
+          <summary>Contact names</summary>
+          <div class="details-body">
+            <form id="names" class="fields"></form>
+            <p id="names-status" role="status"></p>
+          </div>
+        </details>
+        <details class="panel">
           <summary>Farm settings</summary>
           <div class="details-body">
             <form id="settings" class="fields">
@@ -103,7 +113,7 @@
               <button>Add employee</button>
             </form>
             <button id="notify" type="button">Enable browser notifications</button>
-            <p id="notify-status" role="status">Notifications are available while this page is open on supported browsers.</p>
+            <p id="notify-status" role="status">Allow desktop alerts for incoming messages while the demo is open.</p>
             <button id="reset" type="button">Start a new demo farm</button>
           </div>
         </details>
