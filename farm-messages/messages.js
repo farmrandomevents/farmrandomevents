@@ -67,7 +67,7 @@ function readState() {
   }
 }
 let farm = readState();
-let mobileView = 'inbox';
+let messageView = 'inbox';
 const monthName = () => months[farm.month];
 const period = () => `${monthName()} · Year ${farm.year}`;
 const dateStamp = () => `${period()} · Day ${farm.day}`;
@@ -105,12 +105,11 @@ function notify(contact, text) {
 }
 function message(contact, text, extra = {}) {
   farm.messages.push({ contact, text, date: dateStamp(), ...extra });
-  if (!extra.sent && (contact !== farm.contact || (mobileView === 'inbox' &&
-      window.matchMedia?.('(max-width: 690px)').matches))) farm.unread[contact] = (farm.unread[contact] || 0) + 1;
+  if (!extra.sent && (contact !== farm.contact || messageView === 'inbox')) farm.unread[contact] = (farm.unread[contact] || 0) + 1;
   if (!extra.sent) notify(contact, text);
 }
 function selectContact(contact) {
-  mobileView = 'chat';
+  messageView = 'chat';
   farm.contact = contact;
   farm.unread[contact] = 0;
 }
@@ -408,8 +407,8 @@ function renderChat() {
   const info = node('div');
   info.append(title, node('span', role, 'contact-role'));
   const back = button('‹', () => {
-    mobileView = 'inbox';
-    $('workspace').setAttribute('data-view', mobileView);
+    messageView = 'inbox';
+    $('workspace').setAttribute('data-view', messageView);
     $('inbox-title').focus({ preventScroll: true });
   }, 'chat-back');
   back.setAttribute('aria-label', 'Back to messages');
@@ -498,7 +497,7 @@ function renderAccounts() {
   $('staff-list').replaceChildren(...employees);
 }
 function render() {
-  $('workspace').setAttribute('data-view', mobileView);
+  $('workspace').setAttribute('data-view', messageView);
   $('date').textContent = period();
   $('day').textContent = `Day ${farm.day} of ${farm.days}`;
   $('advance').textContent = !farm.started ? 'Start farm messages' :
@@ -605,14 +604,16 @@ $('notify').addEventListener('click', async () => {
     'Notifications are unavailable or blocked in this browser.';
   save();
 });
+$('open-farm-tools').addEventListener('click', () => $('farm-tools').showModal());
 $('reset').addEventListener('click', () => {
   $('reset-dialog').returnValue = '';
   $('reset-dialog').showModal();
 });
 $('reset-dialog').addEventListener('close', () => {
   if ($('reset-dialog').returnValue !== 'reset') return;
+  $('farm-tools').close();
   farm = fresh();
-  mobileView = 'inbox';
+  messageView = 'inbox';
   $('notify').textContent = 'Enable browser notifications';
   $('notify-status').textContent = 'Notifications are available while this page is open on supported browsers.';
   loadSettings();

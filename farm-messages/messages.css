@@ -205,3 +205,78 @@ h1 { font-size: clamp(1.85rem, 4vw, 2.8rem); }
   #conversation { height: clamp(16rem, 47dvh, 28rem); flex: none; }
   .bubble { max-width: 90%; }
 }
+
+/* Keep the messaging surface a single pane at every viewport width. */
+body:has(#app:not([hidden])) .site-header,
+body:has(#app:not([hidden])) .hero,
+body:has(#app:not([hidden])) .footnote { display: none; }
+main:has(#app:not([hidden])) {
+  max-width: 46rem;
+  padding: clamp(.35rem, 2vw, 1.5rem) clamp(.25rem, 1.5vw, .8rem);
+}
+.farm-bar { padding: .5rem .75rem; gap: .4rem; }
+.farm-bar > div:first-child { min-width: 0; font-size: .85rem; }
+.calendar-actions { display: flex; align-items: center; gap: .35rem; }
+#advance { font-size: .8rem; padding: .45rem .6rem; }
+#open-farm-tools { font-size: 1.4rem; line-height: 1; padding: .25rem .65rem; }
+.workspace { display: block; margin-top: .45rem; border-radius: .8rem; }
+.workspace .inbox { border-right: 0; }
+.workspace[data-view="inbox"] .chat,
+.workspace[data-view="chat"] .inbox { display: none; }
+.inbox h2, #chat-header { background: #174536; color: #fff; }
+.inbox h2 { padding: 1rem; }
+.workspace .contact { padding: .85rem 1rem; }
+.workspace .contact[aria-pressed="true"] { background: #fff; }
+.workspace .contact:hover { background: #e7f2eb; }
+.chat-back {
+  display: block;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 1.8rem;
+  padding: .15rem .55rem;
+  min-height: 2.55rem;
+  min-width: 2.4rem;
+  line-height: 1;
+}
+.chat-back:hover { background: #2e6250; }
+#chat-header .contact-role { color: #d4e7da; }
+#chat-header :focus-visible { outline-color: #c9f2d8; }
+#conversation {
+  height: clamp(16rem, 63dvh, 40rem);
+  background-color: #eeeae0;
+  background-image: radial-gradient(#c6c5b5 1px, transparent 1px);
+  background-size: 14px 14px;
+  flex: none;
+}
+.bubble { max-width: min(86%, 34rem); }
+.bubble.sent { background: #d4ebce; color: #193426; border-color: #cadfc4; }
+.bubble.received::before, .bubble.sent::after {
+  content: '';
+  position: absolute;
+  top: .45rem;
+  width: .45rem;
+  height: .65rem;
+  background: inherit;
+}
+.bubble.received::before { right: 100%; clip-path: polygon(0 0,100% 0,100% 100%); }
+.bubble.sent::after { left: 100%; clip-path: polygon(0 0,100% 0,0 100%); }
+.chat-date {
+  width: fit-content;
+  margin-inline: auto;
+  background: #fff;
+  border-radius: .4rem;
+  padding: .25rem .55rem;
+}
+.composer { background: #f7f8f4; }
+#replies button.primary::after { content: ' ↗' / ''; }
+#restrictions:empty { display: none; }
+#farm-tools {
+  width: min(42rem, calc(100% - 1rem));
+  max-width: none;
+  max-height: 88dvh;
+  overflow: auto;
+}
+.tools-header { display: flex; align-items: center; justify-content: space-between; }
+.tools-header h2 { margin: 0; }
+.tools-header button { padding: .2rem .65rem; font-size: 1.3rem; }
