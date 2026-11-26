@@ -73,6 +73,8 @@ function readState() {
 let farm = readState();
 let messageView = 'inbox';
 let audio;
+let chimeEndsAt = 0;
+let toastTimer;
 const monthName = () => months[farm.month];
 const period = () => `${monthName()} · Year ${farm.year}`;
 const dateStamp = () => `${period()} · Day ${farm.day}`;
@@ -112,14 +114,17 @@ document.addEventListener('click', unlockSound, true);
 document.addEventListener('keydown', unlockSound);
 function chime() {
   if (!farm.sound || audio?.state !== 'running') return;
+  const now = audio.currentTime;
+  if (now < chimeEndsAt) return;
+  chimeEndsAt = now + .33;
   [660, 880].forEach((frequency, index) => {
-    const start = audio.currentTime + index * .1;
+    const start = now + index * .1;
     const tone = audio.createOscillator();
     const volume = audio.createGain();
     tone.type = 'sine';
     tone.frequency.value = frequency;
     volume.gain.setValueAtTime(.001, start);
-    volume.gain.exponentialRampToValueAtTime(.22, start + .015);
+    volume.gain.exponentialRampToValueAtTime(.11, start + .015);
     volume.gain.exponentialRampToValueAtTime(.001, start + .22);
     tone.connect(volume).connect(audio.destination);
     tone.start(start);
@@ -140,10 +145,24 @@ $('sound').addEventListener('click', async () => {
 });
 function notify(contact, text) {
   chime();
+  const alert = button('', () => {
+    selectContact(contact);
+    $('toast-region').replaceChildren();
+    if ($('farm-tools').open) $('farm-tools').close();
+    save();
+    render();
+    $('chat-title').focus();
+  }, 'toast');
+  const copy = node('span');
+  copy.append(node('strong', people[contact][0]), node('small', text.split('\n')[0]));
+  alert.append(avatar(contact), copy);
+  $('toast-region').replaceChildren(alert);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $('toast-region').replaceChildren(), 7000);
   if (!farm.notifications || !document.hidden || !('Notification' in window) ||
       Notification.permission !== 'granted') return;
   try {
-    new Notification(`Farm Messages · ${people[contact][0]}`, { body: text });
+    new Notification(`Farm Messages · ${people[contact][0]}`, { body: text, silent: true });
   } catch {
     // Some mobile browsers require a service worker to display notifications.
   }
@@ -737,6 +756,8 @@ $('reset-dialog').addEventListener('close', () => {
   if ($('reset-dialog').returnValue !== 'reset') return;
   $('farm-tools').close();
   farm = fresh();
+  clearTimeout(toastTimer);
+  $('toast-region').replaceChildren();
   messageView = 'inbox';
   $('notify').textContent = 'Enable browser notifications';
   $('notify-status').textContent = 'Notifications are available while this page is open on supported browsers.';
