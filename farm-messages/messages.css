@@ -281,85 +281,41 @@ main:has(#app:not([hidden])) {
 .tools-header h2 { margin: 0; }
 .tools-header button { padding: .2rem .65rem; font-size: 1.3rem; }
 
-/* Contact portraits and arrival alerts */
-.avatar { display: block; width: 2.45rem; object-fit: cover; object-position: center; }
-.message-row { display: flex; align-items: flex-end; gap: .65rem; margin-bottom: .65rem; }
-.message-row.outgoing { justify-content: flex-end; }
-.message-row .bubble { margin-bottom: 0; }
-.message-row > .avatar { width: 2rem; height: 2rem; flex-basis: 2rem; margin-bottom: .16rem; }
-.reply-badge {
-  border-radius: .35rem;
-  padding: .16rem .35rem;
-  font-size: .68rem;
-  font-weight: 750;
-  color: #623d0d;
-  background: #ffe5ae;
-}
-#month-status { color: #ffe1a0; padding: .55rem .45rem 0; font-size: .84rem; }
-#month-status:empty { display: none; }
-#sound, #open-farm-tools { font-size: .78rem; line-height: 1.2; padding: .43rem .55rem; }
-#toast-region { position: fixed; z-index: 5; right: 1rem; bottom: 1rem; max-width: calc(100vw - 2rem); }
-.toast {
+.messages-top, #message-nav {
   display: flex;
   align-items: center;
-  gap: .7rem;
-  width: min(23rem, calc(100vw - 2rem));
-  text-align: left;
-  background: #183d30;
-  border-color: #d5b877;
-  box-shadow: 0 10px 36px #05170c55;
-  padding: .75rem;
+  background: #17372a;
+  border: 1px solid #7c693e;
+  border-radius: .75rem;
+  color: #fff;
 }
-.toast span { min-width: 0; }
-.toast strong, .toast small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.toast small { margin-top: .15rem; color: #e3e9dc; }
-
-@media (min-width: 691px) {
-  body { background: radial-gradient(ellipse at 50% 15%, #204638, #0b241b 70%); }
-  body:has(#app:not([hidden])) .site-header { display: flex; }
-  body:has(#app:not([hidden])) .hero { display: flex; }
-  main:has(#app:not([hidden])) { max-width: 82rem; padding: 1rem 1.5rem 2rem; }
-  .hero {
-    flex-direction: column;
-    justify-content: flex-end;
-    min-height: clamp(9rem, 19vh, 13rem);
-    margin-bottom: .85rem;
-    padding: 1rem 1.65rem;
-    border: 1px solid #73613e;
-    border-radius: .85rem;
-    background:
-      linear-gradient(90deg, #10241aef 0%, #10241abb 35%, #10241a00 82%),
-      url('farm-yard.webp') center 57% / cover;
-  }
-  h1 { font-size: clamp(2rem, 3.6vw, 3.25rem); }
-  .hero p { color: #f2ebd8; }
-  .farm-bar { padding: .65rem 1rem; }
-  .calendar-actions { gap: .5rem; }
-  #advance, #sound, #open-farm-tools { font-size: .86rem; }
-  .workspace {
-    display: grid;
-    grid-template-columns: minmax(14rem, 27%) minmax(0, 1fr);
-    margin-top: .85rem;
-    box-shadow: 0 16px 45px #0a1f1873;
-  }
-  .workspace[data-view="chat"] .inbox, .workspace[data-view="inbox"] .chat { display: flex; }
-  .workspace .inbox { display: flex; flex-direction: column; border-right: 1px solid #d3ddcf; }
-  .inbox h2 { min-height: 4.1rem; display: flex; align-items: center; }
-  .workspace .contact { padding: .67rem .8rem; }
-  .workspace .contact[aria-pressed="true"] {
-    background: #e1efe2;
-    box-shadow: inset 3px 0 #327250;
-  }
-  .chat-back { display: none; }
-  #chat-header { min-height: 4.1rem; }
-  #conversation {
-    height: clamp(23rem, 48dvh, 39rem);
-    padding: .8rem clamp(.9rem, 3vw, 2rem) 1.25rem;
-    background-color: #efeee3;
-    background-image: radial-gradient(#c7caba 1px, transparent 1px);
-  }
+.messages-top { justify-content: space-between; padding: .6rem .85rem; }
+.messages-top h1 { font: inherit; font-size: 1.35rem; font-weight: 750; margin: 0; color: #f8dfa0; }
+#open-farm-tools { min-width: 44px; min-height: 44px; }
+.inbox-controls { display: grid; gap: .55rem; padding: .65rem 1rem; }
+#contact-search { width: 100%; min-height: 44px; border-radius: .55rem; }
+.tab-page { min-height: 16rem; margin-block: .5rem; padding: 1rem; }
+.tab-page h2 { margin-top: 0; }
+.account-balance { font-weight: 700; }
+.job-link { display: block; width: 100%; text-align: left; margin-bottom: .5rem; text-transform: none; }
+#message-nav {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-top: .5rem;
+  padding: .3rem .3rem calc(.3rem + env(safe-area-inset-bottom));
+  box-shadow: 0 -.35rem 1rem #101f1866;
 }
-@media (max-width: 420px) {
-  .farm-bar { padding-inline: .45rem; }
-  #sound, #open-farm-tools, #advance { font-size: .72rem; padding-inline: .34rem; }
+#message-nav button {
+  flex: 1;
+  min-width: 0;
+  min-height: 52px;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  padding: .3rem .15rem;
+  font-size: .8rem;
+  text-transform: none;
 }
+#message-nav span { display: block; font-size: 1.25rem; line-height: 1.15; }
+#message-nav button[aria-pressed="true"] { background: #f0d38b; color: #172c22; }
