@@ -56,7 +56,7 @@ function fresh() {
     settings: { repairProvider: 'dealer', mechanicSalary: 12000, workshop: false, start: 2, days: 3, frequency: '1', billing: 1, guidance: false, animals: false, sheep: false, sync: false },
     days: 3, billing: 1, billingMonths: 0, serial: 0,
     queue: [], messages: [], incidents: [], ledger: [], staff: [], statements: [], unread: {},
-    monthClosed: false, imported: [], notifications: false,
+    monthClosed: false, imported: [], notifications: false, sound: true,
   };
 }
 function readState() {
@@ -64,6 +64,7 @@ function readState() {
     const saved = JSON.parse(localStorage.getItem(saveKey));
     if (!saved) return fresh();
     saved.settings = { ...fresh().settings, ...saved.settings };
+    saved.sound ??= true;
     return saved;
   } catch {
     return fresh();
@@ -71,6 +72,7 @@ function readState() {
 }
 let farm = readState();
 let messageView = 'inbox';
+let audio;
 const monthName = () => months[farm.month];
 const period = () => `${monthName()} · Year ${farm.year}`;
 const dateStamp = () => `${period()} · Day ${farm.day}`;
@@ -97,7 +99,47 @@ function button(label, action, className) {
   element.addEventListener('click', action);
   return element;
 }
+function unlockSound() {
+  if (!farm.sound) return;
+  try {
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!audio && Audio) audio = new Audio();
+    if (audio && audio.state !== 'running') return audio.resume().catch(() => {});
+  } catch {}
+}
+document.addEventListener('pointerdown', unlockSound);
+document.addEventListener('click', unlockSound, true);
+document.addEventListener('keydown', unlockSound);
+function chime() {
+  if (!farm.sound || audio?.state !== 'running') return;
+  [660, 880].forEach((frequency, index) => {
+    const start = audio.currentTime + index * .1;
+    const tone = audio.createOscillator();
+    const volume = audio.createGain();
+    tone.type = 'sine';
+    tone.frequency.value = frequency;
+    volume.gain.setValueAtTime(.001, start);
+    volume.gain.exponentialRampToValueAtTime(.22, start + .015);
+    volume.gain.exponentialRampToValueAtTime(.001, start + .22);
+    tone.connect(volume).connect(audio.destination);
+    tone.start(start);
+    tone.stop(start + .23);
+  });
+}
+function renderSound() {
+  $('sound').setAttribute('aria-pressed', String(farm.sound));
+}
+$('sound').addEventListener('click', async () => {
+  farm.sound = !farm.sound;
+  save();
+  renderSound();
+  if (farm.sound) {
+    await unlockSound();
+    chime();
+  }
+});
 function notify(contact, text) {
+  chime();
   if (!farm.notifications || !document.hidden || !('Notification' in window) ||
       Notification.permission !== 'granted') return;
   try {
@@ -574,6 +616,7 @@ $('contact-search').addEventListener('input', renderContacts);
 $('start-chats').addEventListener('click', () => $('advance').click());
 
 function render() {
+  renderSound();
   $('start-chats').hidden = farm.started;
   renderJobs();
   $('workspace').setAttribute('data-view', messageView);
