@@ -293,6 +293,7 @@ main:has(#app:not([hidden])) {
 .messages-top h1 { font: inherit; font-size: 1.35rem; font-weight: 750; margin: 0; color: #f8dfa0; }
 #open-farm-tools { min-width: 44px; min-height: 44px; }
 .inbox-controls { display: grid; gap: .55rem; padding: .65rem 1rem; }
+#setup-farm { color: #fff; }
 #contact-search {
   width: 100%;
   min-height: 44px;
@@ -425,3 +426,15 @@ main:has(#app:not([hidden])) {
 .reply-topic, .reply-context { width: 100%; margin: .15rem 0; }
 .reply-topic { display: grid; gap: .35rem; font-weight: 700; }
 .reply-topic select { color: #fff; }
+
+#composer-label { font-size: 1rem; color: #35413b; }
+#replies { display: flex; flex-direction: column; align-items: stretch; gap: .55rem; }
+#replies button { font-size: 1rem; min-height: 44px; }
+#replies p { font-size: 1rem; line-height: 1.5; }
+#replies .reply-request { text-align: left; background: #e4e7e5; color: #303a35; font-weight: 750; border-radius: .55rem; }
+#replies .reply-request[aria-expanded="true"] { background: #d7ded9; border-color: #658171; }
+.reply-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+#replies .reply-context { padding: .65rem .75rem; background: #edf0ee; color: #46534c; border-radius: .45rem; white-space: pre-wrap; }
+#conversation-history { margin: .25rem .8rem .8rem; color: #35413b; }
+#conversation-history summary { cursor: pointer; padding-block: .65rem; }
+@media (min-width: 691px) { #replies button, #replies p { font-size: 1.05rem; } }

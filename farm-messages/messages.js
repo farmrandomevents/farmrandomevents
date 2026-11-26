@@ -151,6 +151,7 @@ $('sound').addEventListener('click', async () => {
   }
 });
 function notify(contact, text) {
+  if (!document.hidden && contact === farm.contact && messageView === 'chat' && !$('workspace').hidden && !$('farm-tools').open) return;
   chime();
   const alert = button('', () => {
     selectContact(contact);
@@ -180,6 +181,7 @@ function message(contact, text, extra = {}) {
   if (!extra.sent) notify(contact, text);
 }
 function selectContact(contact, jobId) {
+  if (contact !== farm.contact) $('conversation-history').open = false;
   selectedJobId = jobId;
   showPage('chats');
   messageView = 'chat';
@@ -189,7 +191,7 @@ function selectContact(contact, jobId) {
 function reply(label, action, className) {
   const contact = farm.contact;
   $('composer-label').hidden = false;
-  $('replies').append(button(label, () => {
+  ($('reply-actions') || $('replies')).append(button(label, () => {
     message(contact, label, { sent: true });
     action();
     save();
@@ -358,6 +360,14 @@ function nextDay() {
   save();
   render();
 }
+function remindAboutParkedRepairs() {
+  for (const incident of farm.incidents) {
+    if (incident.type !== 'repair' || incident.stage !== 'parked') continue;
+    incident.stage = 'offer';
+    incident.replyContext = `The ${incident.item} is still out of use. Keep it parked until it’s fixed. Shall we arrange the repair this month?`;
+    message(incident.contact, incident.replyContext);
+  }
+}
 function nextMonth() {
   if (++farm.month === 12) {
     farm.month = 0;
@@ -365,6 +375,7 @@ function nextMonth() {
   }
   farm.tick++;
   beginMonth();
+  remindAboutParkedRepairs();
 }
 function closeMonth() {
   importRewards();
@@ -424,11 +435,13 @@ function replyTopic(incident) {
 function renderReplies() {
   $('replies').replaceChildren();
   $('composer-label').hidden = true;
+  const latestIncoming = farm.messages.findLast(item => item.contact === farm.contact && !item.sent);
   if (!farm.started) {
     $('replies').append(node('p', 'Open Farm settings to match your save, then start receiving messages.'));
     return;
   }
   if (farm.contact === 'accountant') {
+    if (latestIncoming) $('replies').append(node('p', latestIncoming.text, 'reply-context'));
     if (farm.day === farm.days && !farm.monthClosed) {
       reply(`Can I have ${monthName()}’s accounts?`, closeMonth, 'primary');
     }
@@ -455,28 +468,35 @@ function renderReplies() {
   const pending = pendingReplies(farm.contact);
   const incident = pending.find(item => item.id === selectedJobId) || pending[0];
   if (!incident) {
+    if (latestIncoming) $('replies').append(node('p', latestIncoming.text, 'reply-context'));
     $('replies').append(node('p', 'No reply needed right now.'));
     return;
   }
   const contact = incident.contact;
+  const leaveParked = () => {
+    incident.stage = 'parked';
+    message(contact, `Keep the ${incident.item} parked. I’ll check in next month.`);
+  };
+  $('composer-label').hidden = false;
+  const actions = node('div', undefined, 'reply-actions');
+  actions.id = 'reply-actions';
+  actions.append(node('p', incident.replyContext || incident.text, 'reply-context'));
   if (pending.length > 1) {
-    const label = node('label', 'Reply about', 'reply-topic');
-    const selector = node('select');
     for (const [index, item] of pending.entries()) {
-      selector.add(new Option(`${index + 1}. ${replyTopic(item)}`, item.id));
+      const heading = button(`${index + 1}. ${replyTopic(item)}`, () => {
+        selectedJobId = item.id;
+        renderReplies();
+        $('reply-request-' + item.id).focus({ preventScroll: true });
+      }, 'reply-request');
+      heading.id = 'reply-request-' + item.id;
+      heading.setAttribute('aria-expanded', String(item === incident));
+      if (item === incident) heading.setAttribute('aria-controls', actions.id);
+      $('replies').append(heading);
+      if (item === incident) $('replies').append(actions);
     }
-    selector.value = String(incident.id);
-    selector.addEventListener('change', () => {
-      selectedJobId = Number(selector.value);
-      renderReplies();
-      $('replies').querySelector('select').focus();
-    });
-    label.append(selector);
-    $('replies').append(label);
   } else {
-    $('replies').append(node('p', `Reply about: ${replyTopic(incident)}`, 'reply-topic'));
+    $('replies').append(node('p', replyTopic(incident), 'reply-topic'), actions);
   }
-  $('replies').append(node('p', incident.replyContext || incident.text, 'reply-context'));
   if (incident.type === 'repair' && incident.parking) {
     if (incident.stage === 'drop-off') {
       reply('I’ve parked the tractor', () => {
@@ -489,7 +509,8 @@ function renderReplies() {
     const book = (location, amount) => {
       incident.amount = amount;
       incident.stage = 'drop-off';
-      message(contact, `Leave the tractor at the ${location} and text me when it’s parked.`);
+      incident.replyContext = `Leave the tractor at the ${location} and text me when it’s parked.`;
+      message(contact, incident.replyContext);
     };
     if (incident.onFarm) {
       reply('Go ahead with the repair', () => book(incident.parking, 10000), 'primary');
@@ -497,10 +518,7 @@ function renderReplies() {
       reply('I’ll bring it to the dealership', () => book('dealership', 30000), 'primary');
       reply('Book a call-out', () => book(incident.parking, 40000));
     }
-    reply('No thanks', () => {
-      incident.stage = 'closed';
-      message(contact, 'No problem. Give me a shout if you change your mind.');
-    });
+    reply('Leave it parked for now', leaveParked);
     return;
   }
   if (incident.stage === 'drop-off') {
@@ -515,12 +533,12 @@ function renderReplies() {
   if (incident.type === 'repair') {
     reply('I’ll bring it over', () => {
       incident.stage = 'drop-off';
-      message(contact, 'Sounds good. Text me when it’s in the workshop yard.', {
+      incident.replyContext = 'Sounds good. Text me when it’s in the workshop yard.';
+      message(contact, incident.replyContext, {
         guidance: `Move the ${incident.item} to your chosen workshop and leave it out of use until ${contactName(incident.contact)} texts you.`,
       });
     }, 'primary');
-    reply('It’ll have to wait', () =>
-      message(contact, `Give me a shout when you can bring it. Leave the ${incident.item} parked meanwhile.`));
+    reply('Leave it parked for now', leaveParked);
     return;
   }
   const service = incident.type === 'service';
@@ -591,9 +609,12 @@ function renderChat() {
   }
   if (!output.length) output.push(node('p', 'No messages yet.', 'empty-chat'));
   stream.replaceChildren(...output);
-  stream.scrollTop = stream.scrollHeight;
+  if ($('conversation-history').open) stream.scrollTop = stream.scrollHeight;
   renderReplies();
 }
+$('conversation-history').addEventListener('toggle', event => {
+  if (event.currentTarget.open) $('conversation').scrollTop = $('conversation').scrollHeight;
+});
 function renderContacts() {
   $('contacts').replaceChildren();
   const latest = new Map();
@@ -629,6 +650,7 @@ function renderJobs() {
   $('no-jobs').hidden = jobs.length > 0;
   $('restrictions').replaceChildren(...jobs.map(item => {
     const status = item.stage === 'repairing' ? 'Repair in progress' :
+      item.stage === 'parked' ? 'Out of use · Follow-up next month' :
       farm.monthClosed ? 'Replies reopen next month' :
       item.stage === 'drop-off' ? 'Waiting for you to park the machine' : 'Waiting for your reply';
     return button(`${item.item} · ${status}`, () => {
