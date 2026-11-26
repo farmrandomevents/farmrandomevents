@@ -2,7 +2,6 @@
 
 const $ = id => document.getElementById(id);
 const saveKey = 'fsg-live-farm-messages-v1';
-const demoCode = 'FARM CHAT';
 const months = Array.from({ length: 12 }, (_, month) =>
   new Date(2026, month, 15).toLocaleString('en-GB', { month: 'long' }));
 const currencies = { GBP: '£', USD: '$', EUR: '€' };
@@ -910,7 +909,6 @@ $('reset-dialog').addEventListener('close', () => {
   render();
 });
 function openDemo() {
-  $('gate').hidden = true;
   $('app').hidden = false;
   loadSettings();
   $('notify').textContent = farm.notifications ? 'Disable browser notifications' : 'Enable browser notifications';
@@ -918,16 +916,6 @@ function openDemo() {
   save();
   render();
 }
-$('unlock').addEventListener('submit', event => {
-  event.preventDefault();
-  if ($('code').value.trim().replace(/\s+/g, ' ').toUpperCase() !== demoCode) {
-    $('code-status').textContent = 'That demo code isn’t recognised.';
-    return;
-  }
-  try { sessionStorage.setItem(saveKey, 'open'); } catch {}
-  openDemo();
-  (farm.started ? $('contact-search') : $('start-chats')).focus();
-});
 window.addEventListener('storage', event => {
   if ($('app').hidden) return;
   if (event.key === saveKey) {
@@ -940,6 +928,4 @@ window.addEventListener('storage', event => {
     renderAccounts();
   }
 });
-try {
-  if (sessionStorage.getItem(saveKey) === 'open') openDemo();
-} catch {}
+openDemo();
