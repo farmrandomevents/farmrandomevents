@@ -25,7 +25,7 @@ const catalogue = [
   { contact: 'mechanic', type: 'repair', item: 'tractor', photo: tractor, amounts: [300, 400, 500],
     text: 'That warning light sounds like a charging fault. Leave the tractor parked for now. Can you drop it at the workshop?' },
   { contact: 'mechanic', type: 'repair', item: 'baler', photo: 'machinery/baler-breakdown.webp', amounts: [400, 500, 600], season: [5, 6, 7, 8],
-    text: 'If the baler’s making that noise, park it up before it takes the bearings with it. I can get it into the workshop.' },
+    text: 'I noticed the baler’s making a noise. Park it up before it takes the bearings with it. I can get it into the workshop.' },
   { contact: 'mechanic', type: 'service', photo: tractor, amounts: [200, 300], season: [0, 1, 10, 11],
     text: 'I’ve got space for a routine service in the workshop. Shall I put you down for it?' },
   { contact: 'dealer', type: 'expense', photo: 'dealership/category-7.webp', amounts: [200, 300], reason: 'Replacement parts',
