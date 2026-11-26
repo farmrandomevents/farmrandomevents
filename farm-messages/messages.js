@@ -5,8 +5,11 @@ const saveKey = 'fsg-live-farm-messages-v1';
 const demoCode = 'FARM CHAT';
 const months = Array.from({ length: 12 }, (_, month) =>
   new Date(2026, month, 15).toLocaleString('en-GB', { month: 'long' }));
-const pounds = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 2 });
-const money = pennies => pounds.format(pennies / 100).replace(/\.00$/, '');
+const currencies = { GBP: '£', USD: '$', EUR: '€' };
+const money = cents => new Intl.NumberFormat('en-GB', {
+  style: 'currency', currency: farm.settings.currency, currencyDisplay: 'narrowSymbol',
+  minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+}).format(cents / 100);
 const choose = list => list[Math.floor(Math.random() * list.length)];
 const people = {
   mechanic: ['Tom Bennett', 'Mechanic'],
@@ -53,7 +56,7 @@ const catalogue = [
 function fresh() {
   return {
     month: 2, year: 1, day: 1, tick: 0, started: false, contact: 'mechanic',
-    settings: { repairProvider: 'dealer', mechanicSalary: 12000, workshop: false, start: 2, days: 3, frequency: '1', billing: 1, guidance: false, animals: false, sheep: false, sync: false },
+    settings: { currency: 'GBP', repairProvider: 'dealer', mechanicSalary: 12000, workshop: false, start: 2, days: 3, frequency: '1', billing: 1, guidance: false, animals: false, sheep: false, sync: false },
     days: 3, billing: 1, billingMonths: 0, serial: 0,
     queue: [], messages: [], incidents: [], ledger: [], staff: [], statements: [], unread: {},
     monthClosed: false, imported: [], notifications: false, sound: true,
@@ -85,8 +88,10 @@ function save() {
   try {
     localStorage.setItem(saveKey, JSON.stringify(farm));
     $('save-status').textContent = '';
+    return true;
   } catch {
     $('save-status').textContent = 'This browser could not save your progress.';
+    return false;
   }
 }
 function node(tag, text, className) {
@@ -265,9 +270,14 @@ function planMonth(first = false) {
     const weighted = available.flatMap(event => event.season?.includes(farm.month) ? [event, event, event] : [event]);
     scheduled.push(choose(weighted));
   }
-  farm.queue = scheduled.map((event, index) => ({
-    event, day: first && index === 0 ? 1 : 1 + Math.floor(Math.random() * farm.days),
-  }));
+  const dayCounts = Array(farm.days).fill(0);
+  farm.queue = scheduled.map((event, index) => {
+    const fewest = Math.min(...dayCounts);
+    const availableDays = dayCounts.flatMap((count, day) => count === fewest ? [day] : []);
+    const day = first && index === 0 ? 0 : choose(availableDays);
+    dayCounts[day]++;
+    return { event, day: day + 1 };
+  });
 }
 function offer(event) {
   const amount = choose(event.amounts || [0]) * 100;
@@ -290,8 +300,8 @@ function offer(event) {
     incident.amount = incident.onFarm ? 10000 : 30000;
     incident.parking = farm.settings.workshop ? 'farm workshop' : 'farmyard';
     const quote = incident.onFarm
-      ? 'I can fix it here. The parts will be £100.'
-      : 'Workshop drop-off is £300, or we can come to you for £400.';
+      ? `I can fix it here. The parts will be ${money(10000)}.`
+      : `Workshop drop-off is ${money(30000)}, or we can come to you for ${money(40000)}.`;
     message(incident.contact, `There’s a fault on your smallest tractor. ${quote}`, info);
     return;
   }
@@ -636,7 +646,11 @@ $('start-chats').addEventListener('click', () => $('advance').click());
 
 function render() {
   renderSound();
+  entryFields();
+  $('accounts-icon').textContent = currencies[farm.settings.currency];
+  $('staff-currency').textContent = currencies[farm.settings.currency];
   $('start-chats').hidden = farm.started;
+  $('setup-farm').hidden = farm.started;
   renderJobs();
   $('workspace').setAttribute('data-view', messageView);
   $('date').textContent = period();
@@ -651,17 +665,44 @@ function render() {
 const settings = $('settings').elements;
 months.forEach((month, index) => settings.start.add(new Option(month, index)));
 for (let count = 1; count <= 10; count++) settings.frequency.add(new Option(count, count));
+const salaryPresets = [20000, 25000, 30000, 35000, 40000, 50000, 60000];
+function renderSalaryPicker() {
+  const symbol = currencies[settings.currency.value];
+  const salary = Number(settings.mechanicSalary.value);
+  $('salary-currency').textContent = symbol;
+  $('salary-preset').replaceChildren(new Option('Choose a salary', ''),
+    ...salaryPresets.map(amount => new Option(symbol + amount.toLocaleString('en-GB'), amount)));
+  $('salary-preset').value = salaryPresets.includes(salary) ? String(salary) : '';
+  $('salary-down').textContent = '−' + symbol + '100';
+  $('salary-up').textContent = '+' + symbol + '100';
+}
+$('salary-preset').addEventListener('change', event => {
+  if (event.target.value) settings.mechanicSalary.value = event.target.value;
+});
+settings.currency.addEventListener('change', renderSalaryPicker);
+settings.mechanicSalary.addEventListener('change', renderSalaryPicker);
+for (const [id, step] of [['salary-down', -100], ['salary-up', 100]]) {
+  $(id).addEventListener('click', () => {
+    const current = settings.mechanicSalary.valueAsNumber || 30000;
+    settings.mechanicSalary.value = Math.max(100, Math.min(1000000, Math.round(current / 100) * 100 + step));
+    renderSalaryPicker();
+  });
+}
 function loadSettings() {
   for (const [key, value] of Object.entries(farm.settings)) {
     if (settings[key].type === 'checkbox') settings[key].checked = value;
     else settings[key].value = value;
   }
+  renderSalaryPicker();
   settings.start.disabled = farm.started;
+  $('starting-month-note').textContent = farm.started
+    ? 'The starting month is fixed once this save begins.'
+    : 'Choose the month you want to start in.';
 }
 $('settings').addEventListener('submit', event => {
   event.preventDefault();
   farm.settings = {
-    repairProvider: settings.repairProvider.value, mechanicSalary: Number(settings.mechanicSalary.value),
+    currency: settings.currency.value, repairProvider: settings.repairProvider.value, mechanicSalary: Number(settings.mechanicSalary.value),
     workshop: settings.workshop.checked,
     start: Number(settings.start.value), days: Number(settings.days.value), frequency: settings.frequency.value,
     billing: Number(settings.billing.value), guidance: settings.guidance.checked,
@@ -678,9 +719,15 @@ $('settings').addEventListener('submit', event => {
   }
   if (farm.billingMonths === 0) farm.billing = farm.settings.billing;
   importRewards();
-  $('settings-status').textContent = 'Settings saved. Calendar and event frequency changes apply at the start of the next month once play begins. Billing changes apply after the current billing period.';
-  save();
+  if (!save()) {
+    $('settings-save-error').textContent = 'This browser could not save your farm settings.';
+    $('settings-save-error').hidden = false;
+    render();
+    return;
+  }
   render();
+  $('save-status').textContent = 'Farm settings saved.';
+  $('farm-tools').close();
 });
 $('advance').addEventListener('click', () => {
   const starting = !farm.started;
@@ -696,7 +743,8 @@ function entryFields() {
   $('hours-label').hidden = !hours;
   entry.hours.required = hours;
   if (!hours) entry.hours.value = '';
-  $('amount-label').textContent = hours ? 'Hourly rate (£)' : 'Amount (£)';
+  const symbol = currencies[farm.settings.currency];
+  $('amount-label').textContent = hours ? `Hourly rate (${symbol})` : `Amount (${symbol})`;
 }
 entry.type.addEventListener('change', entryFields);
 $('entry').addEventListener('submit', event => {
@@ -747,7 +795,13 @@ $('notify').addEventListener('click', async () => {
     'Notifications are unavailable or blocked in this browser.';
   save();
 });
-$('open-farm-tools').addEventListener('click', () => $('farm-tools').showModal());
+function openFarmSettings() {
+  loadSettings();
+  $('settings-save-error').hidden = true;
+  $('farm-tools').showModal();
+}
+$('open-farm-tools').addEventListener('click', openFarmSettings);
+$('setup-farm').addEventListener('click', openFarmSettings);
 $('reset').addEventListener('click', () => {
   $('reset-dialog').returnValue = '';
   $('reset-dialog').showModal();

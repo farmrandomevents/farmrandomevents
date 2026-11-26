@@ -6,8 +6,8 @@
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#0a281e">
   <title>Live Farm Messages | Farming Simulator Guide</title>
-  <link rel="stylesheet" href="messages.css?v=7">
-  <script src="messages.js?v=8" defer></script>
+  <link rel="stylesheet" href="messages.css?v=10">
+  <script src="messages.js?v=10" defer></script>
 </head>
 <body>
   <header class="site-header"><a href="../index.html">Farming Simulator Guide</a><a href="../farm-events-access.html">Farm Events</a></header>
@@ -36,6 +36,7 @@
           <h2 id="inbox-title" tabindex="-1">Chats</h2>
           <div class="inbox-controls">
             <input id="contact-search" type="search" placeholder="Search name or role" aria-label="Search contacts by name or role">
+            <button id="setup-farm" type="button">Set up farm</button>
             <button id="start-chats" type="button" class="primary">Start farm messages</button>
           </div>
           <div id="contacts" aria-label="Conversations"></div>
@@ -90,7 +91,7 @@
         <button type="button" data-page="chats" aria-pressed="true"><span aria-hidden="true">▤</span>Chats</button>
         <button type="button" data-page="jobs" aria-pressed="false"><span aria-hidden="true">⚒</span>Jobs</button>
         <button type="button" data-page="calendar" aria-pressed="false"><span aria-hidden="true">▦</span>Calendar</button>
-        <button type="button" data-page="accounts" aria-pressed="false"><span aria-hidden="true">£</span>Accounts</button>
+        <button type="button" data-page="accounts" aria-pressed="false"><span id="accounts-icon" aria-hidden="true">£</span>Accounts</button>
       </nav>
       <dialog id="farm-tools" aria-labelledby="farm-tools-title">
         <header class="tools-header">
@@ -102,25 +103,28 @@
           <summary>Farm settings</summary>
           <div class="details-body">
             <form id="settings" class="fields">
-              <label>Starting month <select name="start"></select></label>
+              <label>Starting month <select name="start" aria-describedby="starting-month-note"></select></label>
+              <p id="starting-month-note"></p>
               <label>Days per month <input name="days" type="number" min="1" max="28" required></label>
               <label>New events per month <select name="frequency"><option value="random">Random (1–10)</option></select></label>
+              <label>Farm currency <select name="currency"><option value="GBP">Pounds (£)</option><option value="USD">US dollars ($)</option><option value="EUR">Euros (€)</option></select></label>
               <label>Billing interval <select name="billing"><option value="1">Monthly</option><option value="2">Every two months</option><option value="3">Quarterly</option><option value="6">Every six months</option><option value="12">Annually</option></select></label>
               <label class="check"><input name="guidance" type="checkbox"> Show gameplay notes</label>
               <label class="check"><input name="animals" type="checkbox"> Include livestock messages</label>
               <label class="check"><input name="sheep" type="checkbox"> I keep sheep</label>
               <label class="check"><input name="sync" type="checkbox"> Import eligible rewards from Farm Events on this browser</label>
               <label>Repairs <select name="repairProvider"><option value="dealer">Local dealer</option><option value="staff">Employ a full-time mechanic</option></select></label>
-              <label>Farm mechanic annual salary (£) <input name="mechanicSalary" type="number" min="100" max="1000000" step="100" required></label>
+              <label>Mechanic salary preset <select id="salary-preset"></select></label>
+              <label>Farm mechanic annual salary (<span id="salary-currency">£</span>) <input name="mechanicSalary" type="number" min="100" max="1000000" step="100" required></label>
+              <div class="salary-controls"><button type="button" id="salary-down">−£100</button><button type="button" id="salary-up">+£100</button></div>
               <label><input name="workshop" type="checkbox"> My farm has a workshop</label>
-              <button>Save settings</button>
             </form>
             <p id="settings-status" role="status">Calendar and event frequency changes apply at the start of the next month once play begins. Billing changes apply after the current billing period.</p>
             <h3>Permanent staff</h3>
             <div id="staff-list"></div>
             <form id="staff" class="fields">
               <label>Name <input name="name" maxlength="48" required></label>
-              <label>Annual salary (£) <input name="salary" type="number" min="1" max="10000000" step="0.01" required></label>
+              <label>Annual salary (<span id="staff-currency">£</span>) <input name="salary" type="number" min="1" max="10000000" step="0.01" required></label>
               <label class="check"><input name="applied" type="checkbox"> Wages already deducted in FS25</label>
               <button>Add employee</button>
             </form>
@@ -131,6 +135,10 @@
           </div>
         </details>
       </div>
+        <footer class="settings-footer">
+          <p id="settings-save-error" role="alert" hidden></p>
+          <button class="primary" type="submit" form="settings">Save and close</button>
+        </footer>
       </dialog>
       <dialog id="reset-dialog"><form method="dialog">
         <h2>Start a new demo farm?</h2>
