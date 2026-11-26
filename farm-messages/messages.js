@@ -56,7 +56,7 @@ const catalogue = [
 function fresh() {
   return {
     month: 2, year: 1, day: 1, tick: 0, started: false, contact: 'mechanic',
-    settings: { currency: 'GBP', repairProvider: 'dealer', mechanicSalary: 12000, workshop: false, start: 2, days: 3, frequency: '1', billing: 1, guidance: false, animals: false, sheep: false, sync: false },
+    settings: { currency: 'GBP', repairProvider: 'dealer', mechanicSalary: 12000, workshop: false, start: 2, days: 3, frequency: '1', randomMin: 1, randomMax: 10, billing: 1, guidance: false, animals: false, sheep: false, sync: false },
     days: 3, billing: 1, billingMonths: 0, serial: 0,
     queue: [], messages: [], incidents: [], ledger: [], staff: [], statements: [], unread: {},
     monthClosed: false, imported: [], notifications: false, sound: true,
@@ -259,9 +259,12 @@ function importRewards() {
   }
 }
 
+function monthlyEventCount(settings) {
+  if (settings.frequency !== 'random') return Number(settings.frequency);
+  return settings.randomMin + Math.floor(Math.random() * (settings.randomMax - settings.randomMin + 1));
+}
 function planMonth(first = false) {
-  const count = farm.settings.frequency === 'random' ? 1 + Math.floor(Math.random() * 10) :
-    Number(farm.settings.frequency);
+  const count = monthlyEventCount(farm.settings);
   const pool = catalogue.filter(event => (!event.livestock || farm.settings.animals) && (!event.sheep || farm.settings.sheep) &&
     !(event.type === 'repair' && farm.incidents.some(incident => incident.type === 'repair' &&
       incident.item === event.item && incident.stage !== 'closed')));
@@ -710,6 +713,15 @@ for (const [id, step] of [['salary-down', -100], ['salary-up', 100]]) {
     renderSalaryPicker();
   });
 }
+function updateRandomRange() {
+  const random = settings.frequency.value === 'random';
+  $('random-range').hidden = !random;
+  settings.randomMin.disabled = !random;
+  settings.randomMax.disabled = !random;
+  settings.randomMax.min = settings.randomMin.valueAsNumber || 1;
+}
+settings.frequency.addEventListener('change', updateRandomRange);
+settings.randomMin.addEventListener('input', updateRandomRange);
 function loadSettings() {
   for (const [id, input] of nameFields) input.value = farm.names?.[id] || "";
   for (const [key, value] of Object.entries(farm.settings)) {
@@ -717,6 +729,7 @@ function loadSettings() {
     else settings[key].value = value;
   }
   renderSalaryPicker();
+  updateRandomRange();
   settings.start.disabled = farm.started;
   $('starting-month-note').textContent = farm.started
     ? 'The starting month is fixed once this save begins.'
@@ -729,6 +742,8 @@ $('settings').addEventListener('submit', event => {
     currency: settings.currency.value, repairProvider: settings.repairProvider.value, mechanicSalary: Number(settings.mechanicSalary.value),
     workshop: settings.workshop.checked,
     start: Number(settings.start.value), days: Number(settings.days.value), frequency: settings.frequency.value,
+    randomMin: settings.frequency.value === 'random' ? Number(settings.randomMin.value) : farm.settings.randomMin,
+    randomMax: settings.frequency.value === 'random' ? Number(settings.randomMax.value) : farm.settings.randomMax,
     billing: Number(settings.billing.value), guidance: settings.guidance.checked,
     animals: settings.animals.checked, sheep: settings.sheep.checked, sync: settings.sync.checked,
   };
