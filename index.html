@@ -1,18 +1,171 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Farming Simulator Guide — gameplay tools, roleplaying guides and farming challenges."><title>Home | Farming Simulator Guide</title><link rel="stylesheet" href="style.css"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/random-events/icons/icon-192.png"><meta name="theme-color" content="#062b1e"></head><body><header class="brand"><a href="index.html" aria-label="Farming Simulator Guide home"><span class="brand-line" aria-hidden="true">━━━ ❧</span><span class="brand-title">FARMING SIMULATOR GUIDE</span><span class="brand-line" aria-hidden="true">❧ ━━━</span></a></header><nav class="nav" aria-label="Main navigation"><a href="index.html">Home</a><a href="books.html">Our Books</a><div class="nav-menu"><button type="button" class="nav-toggle" aria-expanded="false">Gameplay Tools ▾</button><div class="nav-dropdown"><a href="farm-events-access.html">Farm Events</a><a href="ai-competitors.html">AI Farming Competitors</a><a href="multiplayer-events.html">Multiplayer Events</a></div></div><a href="book-owners.html" class="owners-nav-link">🔒 Owners Area</a><a href="about.html">About</a><a href="contact.html">Contact</a></nav><section class="slider" id="home" aria-label="Farming scenes slideshow"><div class="slide active first-slide" aria-hidden="false"><img class="slide-photo" src="assets/first-banner-no-stripe.webp" alt="Green tractor and countryside at sunset"><img class="hero-logo-image" src="assets/farming-simulator-guide-logo.png" alt="Farming Simulator Guide"><div class="caption"><h1><em>YOUR FARM.</em> YOUR STORY.</h1><p>Explore new ways to play Farming Simulator.</p></div></div><div class="slide " aria-hidden="true"><img class="slide-photo" src="assets/events.webp" alt="Fields and countryside"><div class="caption"><h1><em>MAKE EVERY SEASON</em> DIFFERENT</h1><p>New challenges. New opportunities. Every year.</p></div></div><div class="slide " aria-hidden="true"><img class="slide-photo" src="assets/competitors.webp" alt="Working farm landscape"><div class="caption"><h1><em>YOUR NEIGHBOURS.</em> YOUR RIVALS.</h1><p>Bring competing farms and changing fortunes to life.</p></div></div><div class="slide " aria-hidden="true"><img class="slide-photo" src="assets/books.webp" alt="Farm scene"><div class="caption"><h1><em>EXPECT THE</em> UNEXPECTED</h1><p>Random events can change the course of your farm.</p></div></div><div class="slide " aria-hidden="true"><img class="slide-photo" src="assets/owners.webp" alt="Rural farm"><div class="caption"><h1><em>BUILD YOUR FARMING</em> LEGACY</h1><p>Start small. Make decisions. Shape your future.</p></div></div><div class="slide " aria-hidden="true"><img class="slide-photo" src="assets/sixth-banner-clean.webp" alt="Green tractor on rolling farmland at sunset"><div class="caption"><h1><em>EVERY FARM</em> HAS A STORY</h1><p>Create a farming experience that is uniquely yours.</p></div></div><button class="slide-arrow previous" aria-label="Previous banner">‹</button><button class="slide-arrow next" aria-label="Next banner">›</button><div class="dots" aria-label="Select banner"></div></section><main id="tools"><div class="intro"><h2>Bring Your Farm to Life</h2><p>Realistic challenges, rival farmers and new ideas for every Farming Simulator season.</p></div><div class="grid"><div class="events-feature"><a class="tile" id="events" href="farm-events-access.html"><div class="pic"><img src="assets/box-events.webp" alt="Lightning storm and dramatic weather" loading="lazy"></div><div class="tile-copy"><h3>Farm Events</h3><div class="event-generator-label">RANDOM EVENT GENERATOR</div><p>Unexpected weather, breakdowns and surprises to change your season.</p></div></a><div class="home-install" id="homeInstallArea"><button class="home-install-button" type="button" id="installFreeApp">⬇ Install Farm Events App</button></div></div><a class="tile" id="competitors" href="ai-competitors.html"><div class="pic"><img src="assets/box-competitors.webp" alt="Neighbouring farms and agricultural machinery" loading="lazy"></div><div class="tile-copy"><h3>AI Farming Competitors</h3><p>Create rival farms, compete for land and bring your map to life.</p></div></a><a class="tile" id="guides" href="multiplayer-events.html"><div class="pic"><img src="assets/box-guides.webp" alt="Countryside farming scene" loading="lazy"></div><div class="tile-copy"><h3>Multiplayer Events</h3><p>Shared events and individual challenges for farms playing together.</p></div></a><a class="tile" id="campaigns" href="campaigns.html"><div class="pic"><img src="assets/box-campaigns.webp" alt="Older tractor and modern tractor working on neighbouring farms" loading="lazy"></div><div class="tile-copy"><h3>Campaigns &amp; Challenges</h3><p>Build your farm through longer campaigns and fresh challenges.</p></div></a></div><div class="install-help" id="installHelp" role="dialog" aria-modal="true" aria-labelledby="installHelpTitle" hidden><div class="install-help-panel"><h2 id="installHelpTitle">Install Farm Events</h2><p id="installHelpMessage"></p><button type="button" id="installHelpClose">Close</button></div></div><p class="note">This independent fan resource is not affiliated with GIANTS Software. Some tools are under development.</p></main><footer>© 2026 Farming Simulator Guide · Independent gameplay guides, tools &amp; roleplaying</footer><script src="slideshow.js" defer></script><script>document.querySelectorAll(".nav a").forEach(a=>{if(a.getAttribute("href")===location.pathname.split("/").pop()||(location.pathname.endsWith("/")&&a.getAttribute("href")==="index.html"))a.setAttribute("aria-current","page")})</script><script src="navigation.js" defer></script><script id="install-app-script">(function(){
-let deferredPrompt=null;
-const area=document.getElementById('homeInstallArea'),button=document.getElementById('installFreeApp'),dialog=document.getElementById('installHelp'),message=document.getElementById('installHelpMessage'),close=document.getElementById('installHelpClose');
-const standalone=()=>window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
-if(standalone())area.hidden=true;
-window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredPrompt=event;});
-window.addEventListener('appinstalled',()=>{deferredPrompt=null;area.hidden=true;});
-function dismiss(){dialog.hidden=true;button.focus();}
-close.addEventListener('click',dismiss);dialog.addEventListener('click',e=>{if(e.target===dialog)dismiss()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!dialog.hidden)dismiss()});
-button.addEventListener('click',async()=>{
-if(deferredPrompt){const prompt=deferredPrompt;deferredPrompt=null;try{await prompt.prompt();const result=await prompt.userChoice;if(result?.outcome==='accepted')area.hidden=true;}catch(e){console.warn('Install prompt unavailable',e)}return;}
-if(standalone())message.textContent='You are already using the installed app.';
-else if(/iphone|ipad|ipod/i.test(navigator.userAgent))message.textContent='In Safari, tap Share, then Add to Home Screen.';
-else if(/android/i.test(navigator.userAgent))message.textContent='In Chrome, tap the three-dot menu (⋮), then choose Install app or Add to Home screen.';
-else message.textContent='In Chrome or Edge, use the browser menu and choose Install Farm Events or Install app. The available option depends on your browser.';
-dialog.hidden=false;close.focus();
-});
-})();</script></body></html>
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0a281e">
+  <title>Live Farm Messages | Farming Simulator Guide</title>
+  <link rel="stylesheet" href="messages.css?v=24">
+  <script src="messages.js?v=24" defer></script>
+</head>
+<body>
+  <header class="site-header"><a href="../index.html">Farming Simulator Guide</a><a href="../farm-events-access.html">Farm Events</a></header>
+  <main>
+    <header class="hero">
+      <h1>Live Farm Messages</h1>
+      <p>Messages from the people who keep your farm running.</p>
+    </header>
+    <div id="app" hidden>
+      <header class="messages-top">
+        <h1>Farm Messages</h1>
+        <button id="open-farm-tools" type="button" aria-label="Farm settings" title="Farm settings" aria-haspopup="dialog">⋮</button>
+      </header>
+      <div id="toast-region" aria-live="polite"></div>
+      <p id="save-status" role="status"></p>
+      <div id="workspace" class="workspace" data-view="inbox">
+        <section class="panel inbox" aria-labelledby="inbox-title">
+          <h2 id="inbox-title" tabindex="-1">Chats</h2>
+          <div class="inbox-controls">
+            <input id="contact-search" type="search" placeholder="Search by name" aria-label="Search contacts by name">
+            <button id="setup-farm" type="button">Set up farm</button>
+            <button id="start-chats" type="button" class="primary">Start farm messages</button>
+          </div>
+          <div id="contacts" aria-label="Conversations"></div>
+          
+        </section>
+        <section class="panel chat" aria-labelledby="chat-title">
+          <header id="chat-header"></header>
+          <div class="composer">
+            <div id="replies" aria-label="Available replies"></div>
+          </div>
+          <details id="conversation-history">
+            <summary>Conversation history</summary>
+          <div id="conversation" role="log" aria-label="Messages" tabindex="0"></div>
+          </details>
+        </section>
+      </div>
+      <section id="jobs-page" class="panel tab-page" hidden>
+        <h2>Jobs</h2>
+        <p id="no-jobs">No active repairs.</p>
+        <div id="restrictions"></div>
+      </section>
+      <section id="calendar-page" class="panel tab-page" hidden>
+        <h2>Calendar</h2>
+        <div class="farm-bar" aria-label="Farm date">
+          <div><strong id="date"></strong><span id="day"></span></div>
+          <button id="advance" class="primary"></button>
+        </div>
+      </section>
+        <section id="accounts-page" class="panel tab-page" hidden>
+          <h2>Accounts</h2><p class="account-balance" id="balance"></p>
+          <div class="details-body">
+            <p>Apply charges, rewards and credits in your FS25 save using your usual house rules. If FS25 has already applied a transaction, leave it as a record only.</p>
+            <div id="ledger"></div>
+            <form id="entry" class="fields">
+              <label>Transaction
+                <select name="type">
+                  <option value="expense">Supplier or contractor bill</option>
+                  <option value="income">Cash income</option>
+                  <option value="credit">Supplier credit earned</option>
+                  <option value="worker">Temporary worker hours</option>
+                  <option value="staff">Staff bonus</option>
+                </select>
+              </label>
+              <label id="supplier-label">Supplier or contact <input name="source" maxlength="48" required></label>
+              <label id="reason-label">Reason <input name="reason" maxlength="80" required></label>
+              <label><span id="amount-label">Amount (£)</span> <input name="amount" type="number" required min="0.01" step="0.01" max="10000000"></label>
+              <label id="hours-label" hidden>Hours worked <input name="hours" type="number" min="0.25" step="0.25" max="744"></label>
+              <label id="applied-label" class="check"><input name="applied" type="checkbox"> Already applied in FS25 or paid separately</label>
+              <button>Add entry</button>
+            </form>
+          </div>
+        </section>
+      <nav id="message-nav" aria-label="Farm Messages">
+        <button type="button" data-page="chats" aria-pressed="true"><span aria-hidden="true">▤</span>Chats</button>
+        <button type="button" data-page="jobs" aria-pressed="false"><span aria-hidden="true">⚒</span>Jobs</button>
+        <button type="button" data-page="calendar" aria-pressed="false"><span aria-hidden="true">▦</span>Calendar</button>
+        <button type="button" data-page="accounts" aria-pressed="false"><span id="accounts-icon" aria-hidden="true">£</span>Accounts</button>
+      </nav>
+      <dialog id="farm-tools" aria-labelledby="farm-tools-title">
+        <header class="tools-header">
+          <h2 id="farm-tools-title">Farm settings</h2>
+          <form method="dialog"><button aria-label="Close farm settings" autofocus>×</button></form>
+        </header>
+        <div class="tools">
+        <details class="panel" open>
+          <summary>Farm settings</summary>
+          <div class="details-body">
+            <form id="settings" class="fields">
+              <details class="panel settings-wide">
+                <summary>Contact names and repairs</summary>
+                <div class="details-body contact-settings">
+                  <div class="settings-stack">
+                    <fieldset id="contact-options" class="settings-stack">
+                      <legend>Incoming messages</legend>
+                    </fieldset>
+                    <div id="contact-names" class="settings-stack"></div>
+                  </div>
+                  <div class="settings-stack">
+                    <label>Repairs <select name="repairProvider"><option value="dealer">Local dealer</option><option value="staff">Employ a full-time mechanic</option></select></label>
+              <div id="mechanic-name-setting" class="settings-stack"></div>
+              <div id="mechanic-pay" class="settings-stack" hidden>
+<label>Salary preset <select id="salary-preset"></select></label>
+              <label><span>Annual salary <span id="salary-currency">£</span></span> <input name="mechanicSalary" type="number" min="0" max="1000000" step="100" required></label>
+              <div class="salary-controls"><button type="button" id="salary-down-1000">−£1,000</button><button type="button" id="salary-down">−£100</button><button type="button" id="salary-up">+£100</button><button type="button" id="salary-up-1000">+£1,000</button></div>
+              </div>
+<label class="check"><input name="workshop" type="checkbox"> My farm has a workshop</label>
+                  </div>
+                </div>
+              </details>
+              <label>Starting month <select name="start" aria-describedby="starting-month-note"></select></label>
+              <p id="starting-month-note"></p>
+              <label>Days per month <select name="days"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option></select></label>
+              <div class="settings-stack">
+              <label>New events per month <select name="frequency"><option value="random">Random range</option></select></label>
+              <fieldset id="random-range" class="range-fields" hidden>
+                <label>Minimum <input name="randomMin" type="number" min="1" max="10" step="1" required disabled></label>
+                <label>Maximum <input name="randomMax" type="number" min="1" max="10" step="1" required disabled></label>
+              </fieldset>
+              </div>
+              <label>Farm currency <select name="currency"><option value="GBP">Pounds (£)</option><option value="USD">US dollars ($)</option><option value="EUR">Euros (€)</option></select></label>
+              <label>Billing interval <select name="billing"><option value="1">Monthly</option><option value="2">Every two months</option><option value="3">Quarterly</option><option value="6">Every six months</option><option value="12">Annually</option></select></label>
+              <label class="check"><input name="guidance" type="checkbox"> Show gameplay notes</label>
+              <details class="panel settings-wide"><summary>Livestock</summary><div class="details-body settings-stack">
+              <label class="check"><input name="animals" type="checkbox"> Include livestock messages</label>
+              <label class="check"><input name="sheep" type="checkbox"> I keep sheep</label>
+              </div></details>
+              <label class="check"><input name="sync" type="checkbox"> Import eligible rewards from Farm Events on this browser</label>
+            </form>
+            <p id="settings-status" role="status">Calendar and event frequency changes apply at the start of the next month once play begins. Billing changes apply after the current billing period.</p>
+            <h3>Permanent staff</h3>
+            <div id="staff-list"></div>
+            <form id="staff" class="fields">
+              <label>Name <input name="name" maxlength="48" required></label>
+              <label><span>Annual salary <span id="staff-currency">£</span></span> <input name="salary" type="number" min="1" max="10000000" step="0.01" required></label>
+              <label class="check"><input name="applied" type="checkbox"> Wages already deducted in FS25</label>
+              <button>Add employee</button>
+            </form>
+            <button id="sound" type="button" aria-pressed="true">Message sound</button>
+            <button id="notify" type="button">Enable browser notifications</button>
+            <p id="notify-status" role="status">Notifications are available while this page is open on supported browsers.</p>
+            <button id="reset" type="button">Start a new demo farm</button>
+          </div>
+        </details>
+      </div>
+        <footer class="settings-footer">
+          <p id="settings-save-error" role="alert" hidden></p>
+          <button class="primary" type="submit" form="settings">Save and close</button>
+        </footer>
+      </dialog>
+      <dialog id="reset-dialog"><form method="dialog">
+        <h2>Start a new demo farm?</h2>
+        <p>This clears the inbox, accounts and calendar saved for this demo.</p>
+        <button value="cancel" autofocus>Keep playing</button>
+        <button value="reset" class="primary">Start new farm</button>
+      </form></dialog>
+      <p class="footnote">Progress is saved in this browser. Keep the demo calendar in step with your FS25 save.</p>
+    </div>
+  </main>
+</body>
+</html>
