@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0a281e">
   <title>Live Farm Messages | Farming Simulator Guide</title>
   <link rel="stylesheet" href="messages.css?v=10">
-  <script src="messages.js?v=10" defer></script>
+  <script src="messages.js?v=12" defer></script>
 </head>
 <body>
   <header class="site-header"><a href="../index.html">Farming Simulator Guide</a><a href="../farm-events-access.html">Farm Events</a></header>
@@ -35,7 +35,7 @@
         <section class="panel inbox" aria-labelledby="inbox-title">
           <h2 id="inbox-title" tabindex="-1">Chats</h2>
           <div class="inbox-controls">
-            <input id="contact-search" type="search" placeholder="Search name or role" aria-label="Search contacts by name or role">
+            <input id="contact-search" type="search" placeholder="Search by name" aria-label="Search contacts by name">
             <button id="setup-farm" type="button">Set up farm</button>
             <button id="start-chats" type="button" class="primary">Start farm messages</button>
           </div>
@@ -103,6 +103,7 @@
           <summary>Farm settings</summary>
           <div class="details-body">
             <form id="settings" class="fields">
+              <details class="panel"><summary>Contact names</summary><div id="contact-names" class="fields details-body"></div></details>
               <label>Starting month <select name="start" aria-describedby="starting-month-note"></select></label>
               <p id="starting-month-note"></p>
               <label>Days per month <input name="days" type="number" min="1" max="28" required></label>

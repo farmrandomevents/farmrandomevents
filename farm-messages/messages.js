@@ -39,7 +39,7 @@ const catalogue = [
   { contact: 'neighbour', type: 'expense', photo: 'community/category-9.webp', amounts: [200, 400], reason: 'Contractor work',
     text: 'I’m finishing a job down the road and could bring the hedge cutter over. Do you want me to pencil you in?' },
   { contact: 'neighbour', type: 'income', amounts: [300, 500], reason: 'Agricultural show prize', season: [5, 6, 7, 8],
-    text: 'Had a ring from the show secretary. You’ve won a cash prize! I’ve asked Helen to put it in the accounts.' },
+    text: 'Had a ring from the show secretary. You’ve won a cash prize! I’ve asked the accountant to put it in the accounts.' },
   { contact: 'worker', type: 'note', season: [5, 6, 7, 8],
     text: 'I’ve checked the yard and put the spare fuel cans away. Let me know if you want a hand getting ready for harvest.' },
   { contact: 'worker', type: 'note', sheep: true,
@@ -74,6 +74,7 @@ function readState() {
   }
 }
 let farm = readState();
+const contactName = id => farm.names?.[id]?.trim() || people[id][0];
 let messageView = 'inbox';
 let audio;
 let chimeEndsAt = 0;
@@ -159,7 +160,7 @@ function notify(contact, text) {
     $('chat-title').focus();
   }, 'toast');
   const copy = node('span');
-  copy.append(node('strong', people[contact][0]), node('small', text.split('\n')[0]));
+  copy.append(node('strong', contactName(contact)), node('small', text.split('\n')[0]));
   alert.append(avatar(contact), copy);
   $('toast-region').replaceChildren(alert);
   clearTimeout(toastTimer);
@@ -167,7 +168,7 @@ function notify(contact, text) {
   if (!farm.notifications || !document.hidden || !('Notification' in window) ||
       Notification.permission !== 'granted') return;
   try {
-    new Notification(`Farm Messages · ${people[contact][0]}`, { body: text, silent: true });
+    new Notification(`Farm Messages · ${contactName(contact)}`, { body: text, silent: true });
   } catch {
     // Some mobile browsers require a service worker to display notifications.
   }
@@ -282,7 +283,7 @@ function planMonth(first = false) {
 function offer(event) {
   const amount = choose(event.amounts || [0]) * 100;
   const info = { photo: event.photo, guidance: event.guidance };
-  const source = people[event.contact][0];
+  const source = contactName(event.contact);
   if (event.type === 'income' || event.type === 'credit') {
     addEntry(source, event.reason, amount, event.type);
     message(event.contact, `${event.text} ${money(amount)}.`, info);
@@ -320,8 +321,8 @@ function runDay() {
         message(incident.contact, `Bit more to it than I thought. I’ll need another two days on the ${incident.item}. The quote still stands.`);
       } else {
         incident.stage = 'closed';
-        addEntry(people[incident.contact][0], `${incident.item} repair`, incident.amount);
-        message(incident.contact, `The ${incident.item} is fixed and ready to collect. I’ve sent the invoice to Helen.`);
+        addEntry(contactName(incident.contact), `${incident.item} repair`, incident.amount);
+        message(incident.contact, `The ${incident.item} is fixed and ready to collect. I’ve sent the invoice to ${contactName('accountant')}.`);
       }
     }
   }
@@ -437,7 +438,7 @@ function renderReplies() {
     return;
   }
   if (farm.monthClosed) {
-    $('replies').append(node('p', 'This month’s accounts are ready. Reply to Helen to open the next month.'));
+    $('replies').append(node('p', `This month’s accounts are ready. Reply to ${contactName('accountant')} to open the next month.`));
     return;
   }
   const incident = activeIncident(farm.contact);
@@ -450,8 +451,8 @@ function renderReplies() {
     if (incident.stage === 'drop-off') {
       reply('I’ve parked the tractor', () => {
         incident.stage = 'closed';
-        addEntry(people[contact][0], incident.onFarm ? 'Tractor repair parts' : 'Dealer tractor repair', incident.amount);
-        message(contact, `That’s the tractor sorted. I’ve sent the ${money(incident.amount)} charge to Helen.`);
+        addEntry(contactName(contact), incident.onFarm ? 'Tractor repair parts' : 'Dealer tractor repair', incident.amount);
+        message(contact, `That’s the tractor sorted. I’ve sent the ${money(incident.amount)} charge to ${contactName('accountant')}.`);
       }, 'primary');
       return;
     }
@@ -481,7 +482,7 @@ function renderReplies() {
     reply('I’ll bring it over', () => {
       incident.stage = 'drop-off';
       message(contact, 'Sounds good. Text me when it’s in the workshop yard.', {
-        guidance: `Move the ${incident.item} to your chosen workshop and leave it out of use until Tom texts you.`,
+        guidance: `Move the ${incident.item} to your chosen workshop and leave it out of use until ${contactName(incident.contact)} texts you.`,
       });
     }, 'primary');
     reply('It’ll have to wait', () =>
@@ -491,7 +492,7 @@ function renderReplies() {
   const service = incident.type === 'service';
   reply(service ? 'Yes, book me in' : 'Yes, please go ahead', () => {
     incident.stage = 'closed';
-    addEntry(people[contact][0], incident.reason || 'Routine service', incident.amount);
+    addEntry(contactName(contact), incident.reason || 'Routine service', incident.amount);
     message(contact, `That’s sorted. I’ll put the ${money(incident.amount)} on the farm account.`);
   }, 'primary');
   if (service && !incident.deferred) {
@@ -517,7 +518,8 @@ function avatar(contact) {
   return image;
 }
 function renderChat() {
-  const [name, role] = people[farm.contact];
+  const name = contactName(farm.contact);
+  const [, role] = people[farm.contact];
   const title = node('h2', name);
   title.id = 'chat-title';
   title.tabIndex = -1;
@@ -563,10 +565,10 @@ function renderContacts() {
   const latest = new Map();
   for (const [index, item] of farm.messages.entries()) latest.set(item.contact, { item, index });
   const query = $('contact-search').value.trim().toLowerCase();
-  const contacts = Object.entries(people).filter(([, [name, role]]) =>
-    `${name} ${role}`.toLowerCase().includes(query)).sort(([a], [b]) =>
+  const contacts = Object.entries(people).filter(([id]) =>
+    contactName(id).toLowerCase().startsWith(query)).sort(([a], [b]) =>
     (latest.get(b)?.index ?? -1) - (latest.get(a)?.index ?? -1));
-  for (const [id, [name, role]] of contacts) {
+  for (const [id, [, role]] of contacts) {
     const contact = button('', () => {
       selectContact(id);
       save();
@@ -577,7 +579,7 @@ function renderContacts() {
     const last = latest.get(id)?.item;
     const preview = last ? (last.sent ? 'You: ' : '') + last.text.split('\n')[0] : role;
     const label = node('span', undefined, 'contact-copy');
-    label.append(node('strong', name), node('small', preview));
+    label.append(node('strong', contactName(id)), node('small', preview));
     contact.append(avatar(id), label);
     if (farm.unread[id]) {
       const unread = node('span', String(farm.unread[id]), 'unread');
@@ -663,6 +665,16 @@ function render() {
 }
 
 const settings = $('settings').elements;
+const nameFields = Object.entries(people).map(([id, [name, role]]) => {
+  const label = node('label', role);
+  const input = node('input');
+  input.type = 'text';
+  input.maxLength = 48;
+  input.placeholder = name;
+  label.append(input);
+  $('contact-names').append(label);
+  return [id, input];
+});
 months.forEach((month, index) => settings.start.add(new Option(month, index)));
 for (let count = 1; count <= 10; count++) settings.frequency.add(new Option(count, count));
 const salaryPresets = [20000, 25000, 30000, 35000, 40000, 50000, 60000];
@@ -689,6 +701,7 @@ for (const [id, step] of [['salary-down', -100], ['salary-up', 100]]) {
   });
 }
 function loadSettings() {
+  for (const [id, input] of nameFields) input.value = farm.names?.[id] || "";
   for (const [key, value] of Object.entries(farm.settings)) {
     if (settings[key].type === 'checkbox') settings[key].checked = value;
     else settings[key].value = value;
@@ -701,6 +714,7 @@ function loadSettings() {
 }
 $('settings').addEventListener('submit', event => {
   event.preventDefault();
+  farm.names = Object.fromEntries(nameFields.map(([id, input]) => [id, input.value.trim()]));
   farm.settings = {
     currency: settings.currency.value, repairProvider: settings.repairProvider.value, mechanicSalary: Number(settings.mechanicSalary.value),
     workshop: settings.workshop.checked,
