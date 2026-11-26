@@ -414,3 +414,14 @@ main:has(#app:not([hidden])) {
 
 .salary-controls { display: flex; gap: .5rem; }
 .salary-controls button { min-height: 44px; }
+
+.settings-wide { grid-column: 1 / -1; }
+.settings-stack, .contact-settings { display: grid; gap: .65rem; align-content: start; }
+.range-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; min-width: 0; margin: 0; padding: 0; border: 0; }
+@media (min-width: 691px) {
+  .contact-settings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.reply-topic, .reply-context { width: 100%; margin: .15rem 0; }
+.reply-topic { display: grid; gap: .35rem; font-weight: 700; }
+.reply-topic select { color: #fff; }

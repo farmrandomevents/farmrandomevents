@@ -308,11 +308,13 @@ function offer(event) {
     const quote = incident.onFarm
       ? `I can fix it here. The parts will be ${money(10000)}.`
       : `Workshop drop-off is ${money(30000)}, or we can come to you for ${money(40000)}.`;
-    message(incident.contact, `There’s a fault on your smallest tractor. ${quote}`, info);
+    incident.replyContext = `There’s a fault on your smallest tractor. ${quote}`;
+    message(incident.contact, incident.replyContext, info);
     return;
   }
   const quote = amount ? ` It’ll be ${money(amount)}.` : '';
-  message(event.contact, event.text + quote, info);
+  incident.replyContext = event.text + quote;
+  message(event.contact, incident.replyContext, info);
 }
 function runDay() {
   for (const incident of farm.incidents) {
@@ -411,10 +413,13 @@ function closeMonth() {
   ].join('\n'));
 }
 
-function activeIncident(contact) {
-  const pending = farm.incidents.filter(incident => incident.contact === contact &&
+function pendingReplies(contact) {
+  return farm.incidents.filter(incident => incident.contact === contact &&
     ['offer', 'drop-off'].includes(incident.stage));
-  return pending.find(incident => incident.id === selectedJobId) || pending[0];
+}
+function replyTopic(incident) {
+  if (incident.type === 'repair') return incident.item + ' repair';
+  return incident.reason || 'Routine service';
 }
 function renderReplies() {
   $('replies').replaceChildren();
@@ -447,15 +452,31 @@ function renderReplies() {
     $('replies').append(node('p', `This month’s accounts are ready. Reply to ${contactName('accountant')} to open the next month.`));
     return;
   }
-  const incident = activeIncident(farm.contact);
+  const pending = pendingReplies(farm.contact);
+  const incident = pending.find(item => item.id === selectedJobId) || pending[0];
   if (!incident) {
     $('replies').append(node('p', 'No reply needed right now.'));
     return;
   }
   const contact = incident.contact;
-  if (incident.type === 'repair') {
-    $('replies').append(node('p', `Reply about the ${incident.item}`));
+  if (pending.length > 1) {
+    const label = node('label', 'Reply about', 'reply-topic');
+    const selector = node('select');
+    for (const [index, item] of pending.entries()) {
+      selector.add(new Option(`${index + 1}. ${replyTopic(item)}`, item.id));
+    }
+    selector.value = String(incident.id);
+    selector.addEventListener('change', () => {
+      selectedJobId = Number(selector.value);
+      renderReplies();
+      $('replies').querySelector('select').focus();
+    });
+    label.append(selector);
+    $('replies').append(label);
+  } else {
+    $('replies').append(node('p', `Reply about: ${replyTopic(incident)}`, 'reply-topic'));
   }
+  $('replies').append(node('p', incident.replyContext || incident.text, 'reply-context'));
   if (incident.type === 'repair' && incident.parking) {
     if (incident.stage === 'drop-off') {
       reply('I’ve parked the tractor', () => {
@@ -704,6 +725,12 @@ function renderSalaryPicker() {
 $('salary-preset').addEventListener('change', event => {
   if (event.target.value) settings.mechanicSalary.value = event.target.value;
 });
+function updateRepairSettings() {
+  const employsMechanic = settings.repairProvider.value === 'staff';
+  $('mechanic-pay').hidden = !employsMechanic;
+  settings.mechanicSalary.disabled = !employsMechanic;
+}
+settings.repairProvider.addEventListener('change', updateRepairSettings);
 settings.currency.addEventListener('change', renderSalaryPicker);
 settings.mechanicSalary.addEventListener('change', renderSalaryPicker);
 for (const [id, step] of [['salary-down', -100], ['salary-up', 100]]) {
@@ -730,6 +757,7 @@ function loadSettings() {
   }
   renderSalaryPicker();
   updateRandomRange();
+  updateRepairSettings();
   settings.start.disabled = farm.started;
   $('starting-month-note').textContent = farm.started
     ? 'The starting month is fixed once this save begins.'
@@ -739,7 +767,7 @@ $('settings').addEventListener('submit', event => {
   event.preventDefault();
   farm.names = Object.fromEntries(nameFields.map(([id, input]) => [id, input.value.trim()]));
   farm.settings = {
-    currency: settings.currency.value, repairProvider: settings.repairProvider.value, mechanicSalary: Number(settings.mechanicSalary.value),
+    currency: settings.currency.value, repairProvider: settings.repairProvider.value, mechanicSalary: settings.repairProvider.value === 'staff' ? Number(settings.mechanicSalary.value) : farm.settings.mechanicSalary,
     workshop: settings.workshop.checked,
     start: Number(settings.start.value), days: Number(settings.days.value), frequency: settings.frequency.value,
     randomMin: settings.frequency.value === 'random' ? Number(settings.randomMin.value) : farm.settings.randomMin,
