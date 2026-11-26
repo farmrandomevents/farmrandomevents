@@ -76,6 +76,7 @@ function readState() {
 let farm = readState();
 const contactName = id => farm.names?.[id]?.trim() || people[id][0];
 let messageView = 'inbox';
+let selectedJobId;
 let audio;
 let chimeEndsAt = 0;
 let toastTimer;
@@ -178,7 +179,8 @@ function message(contact, text, extra = {}) {
   if (!extra.sent && (contact !== farm.contact || messageView === 'inbox')) farm.unread[contact] = (farm.unread[contact] || 0) + 1;
   if (!extra.sent) notify(contact, text);
 }
-function selectContact(contact) {
+function selectContact(contact, jobId) {
+  selectedJobId = jobId;
   showPage('chats');
   messageView = 'chat';
   farm.contact = contact;
@@ -407,8 +409,9 @@ function closeMonth() {
 }
 
 function activeIncident(contact) {
-  return farm.incidents.find(incident => incident.contact === contact &&
+  const pending = farm.incidents.filter(incident => incident.contact === contact &&
     ['offer', 'drop-off'].includes(incident.stage));
+  return pending.find(incident => incident.id === selectedJobId) || pending[0];
 }
 function renderReplies() {
   $('replies').replaceChildren();
@@ -447,6 +450,9 @@ function renderReplies() {
     return;
   }
   const contact = incident.contact;
+  if (incident.type === 'repair') {
+    $('replies').append(node('p', `Reply about the ${incident.item}`));
+  }
   if (incident.type === 'repair' && incident.parking) {
     if (incident.stage === 'drop-off') {
       reply('I’ve parked the tractor', () => {
@@ -467,6 +473,10 @@ function renderReplies() {
       reply('I’ll bring it to the dealership', () => book('dealership', 30000), 'primary');
       reply('Book a call-out', () => book(incident.parking, 40000));
     }
+    reply('No thanks', () => {
+      incident.stage = 'closed';
+      message(contact, 'No problem. Give me a shout if you change your mind.');
+    });
     return;
   }
   if (incident.stage === 'drop-off') {
@@ -595,13 +605,13 @@ function renderJobs() {
   $('no-jobs').hidden = jobs.length > 0;
   $('restrictions').replaceChildren(...jobs.map(item => {
     const status = item.stage === 'repairing' ? 'Repair in progress' :
+      farm.monthClosed ? 'Replies reopen next month' :
       item.stage === 'drop-off' ? 'Waiting for you to park the machine' : 'Waiting for your reply';
     return button(`${item.item} · ${status}`, () => {
-      showPage('chats');
-      selectContact(item.contact);
+      selectContact(item.contact, item.id);
       save();
       render();
-      $('chat-title').focus();
+      (document.querySelector('#replies button') || $('chat-title')).focus();
     }, 'job-link');
   }));
 }
@@ -824,6 +834,7 @@ $('reset-dialog').addEventListener('close', () => {
   if ($('reset-dialog').returnValue !== 'reset') return;
   $('farm-tools').close();
   farm = fresh();
+  selectedJobId = undefined;
   clearTimeout(toastTimer);
   $('toast-region').replaceChildren();
   messageView = 'inbox';
