@@ -319,3 +319,53 @@ main:has(#app:not([hidden])) {
 }
 #message-nav span { display: block; font-size: 1.25rem; line-height: 1.15; }
 #message-nav button[aria-pressed="true"] { background: #f0d38b; color: #172c22; }
+
+/* Farm portraits and desktop layout */
+.avatar { display: block; width: 2.45rem; object-fit: cover; object-position: center; }
+.message-row { display: flex; align-items: flex-end; gap: .65rem; margin-bottom: .65rem; }
+.message-row.outgoing { justify-content: flex-end; }
+.message-row .bubble { margin-bottom: 0; }
+.message-row > .avatar { width: 2rem; height: 2rem; flex-basis: 2rem; margin-bottom: .16rem; }
+
+@media (min-width: 691px) {
+  body { background: radial-gradient(ellipse at 50% 15%, #204638, #0b241b 70%); }
+  body:has(#app:not([hidden])) .site-header { display: flex; }
+  body:has(#app:not([hidden])) .hero { display: flex; }
+  main:has(#app:not([hidden])) { max-width: 82rem; padding: 1rem 1.5rem 2rem; }
+  .hero {
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: clamp(9rem, 19vh, 13rem);
+    margin-bottom: .85rem;
+    padding: 1rem 1.65rem;
+    border: 1px solid #73613e;
+    border-radius: .85rem;
+    background:
+      linear-gradient(90deg, #10241aef 0%, #10241abb 35%, #10241a00 82%),
+      url('farm-yard.webp') center 57% / cover;
+  }
+  h1 { font-size: clamp(2rem, 3.6vw, 3.25rem); }
+  .hero p { color: #f2ebd8; }
+  .farm-bar { padding: .65rem 1rem; }
+  .workspace:not([hidden]) {
+    display: grid;
+    grid-template-columns: minmax(14rem, 27%) minmax(0, 1fr);
+    margin-top: .85rem;
+    box-shadow: 0 16px 45px #0a1f1873;
+  }
+  .workspace[data-view="chat"] .inbox, .workspace[data-view="inbox"] .chat { display: flex; }
+  .workspace .inbox { display: flex; flex-direction: column; border-right: 1px solid #d3ddcf; }
+  .workspace .contact { padding: .67rem .8rem; }
+  .workspace .contact[aria-pressed="true"] {
+    background: #e1efe2;
+    box-shadow: inset 3px 0 #327250;
+  }
+  .chat-back { display: none; }
+  #chat-header { min-height: 4.1rem; }
+  #conversation {
+    height: clamp(23rem, 48dvh, 39rem);
+    padding: .8rem clamp(.9rem, 3vw, 2rem) 1.25rem;
+    background-color: #efeee3;
+    background-image: radial-gradient(#c7caba 1px, transparent 1px);
+  }
+}

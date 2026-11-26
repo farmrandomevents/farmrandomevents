@@ -9,13 +9,13 @@ const pounds = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GB
 const money = pennies => pounds.format(pennies / 100).replace(/\.00$/, '');
 const choose = list => list[Math.floor(Math.random() * list.length)];
 const people = {
-  mechanic: ['Tom Bennett', 'Mechanic', '👨‍🔧'],
-  dealer: ['Hannah Reed', 'Machinery dealer', '👩‍💼'],
-  vet: ['Priya Shah', 'Vet', '👩‍⚕️'],
-  supplier: ['Jo Ellis', 'Feed and supplies', '👩‍🌾'],
-  neighbour: ['George Miller', 'Neighbour', '🧑‍🌾'],
-  worker: ['Sam Cooper', 'Farmhand', '👨‍🌾'],
-  accountant: ['Helen Carter', 'Accountant', '👩‍💻'],
+  mechanic: ['Tom Bennett', 'Mechanic'],
+  dealer: ['Hannah Reed', 'Machinery dealer'],
+  vet: ['Priya Shah', 'Vet'],
+  supplier: ['Jo Ellis', 'Feed and supplies'],
+  neighbour: ['George Miller', 'Neighbour'],
+  worker: ['Sam Cooper', 'Farmhand'],
+  accountant: ['Helen Carter', 'Accountant'],
 };
 const tractor = 'machinery/machinery-workshop.webp';
 const catalogue = [
@@ -436,10 +436,14 @@ function renderReplies() {
     message(contact, 'No problem. Give me a shout if you change your mind.');
   });
 }
+const portraitPath = contact => `portraits/${contact}.webp`;
 function avatar(contact) {
-  const icon = node('span', people[contact][2], 'avatar');
-  icon.setAttribute('aria-hidden', 'true');
-  return icon;
+  const image = node('img', undefined, 'avatar');
+  image.src = portraitPath(contact);
+  image.alt = '';
+  image.width = 48;
+  image.height = 48;
+  return image;
 }
 function renderChat() {
   const [name, role] = people[farm.contact];
@@ -473,7 +477,10 @@ function renderChat() {
       bubble.append(image);
     }
     if (item.guidance && farm.settings.guidance) bubble.append(node('p', item.guidance, 'game-note'));
-    output.push(bubble);
+    const row = node('div', undefined, item.sent ? 'message-row outgoing' : 'message-row');
+    if (!item.sent) row.append(avatar(item.contact));
+    row.append(bubble);
+    output.push(row);
   }
   if (!output.length) output.push(node('p', 'No messages yet.', 'empty-chat'));
   stream.replaceChildren(...output);
