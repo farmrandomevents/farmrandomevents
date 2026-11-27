@@ -26,8 +26,6 @@ const catalogue = [
   { contact: 'mechanic', type: 'repair', item: 'combine header', scenario: 'header', photo: tractor },
   { contact: 'mechanic', type: 'repair', item: 'baler', photo: 'machinery/baler-breakdown.webp', amounts: [400, 500, 600], season: [5, 6, 7, 8],
     text: 'I noticed the baler’s making a noise. Park it up before it takes the bearings with it. I can get it into the workshop.' },
-  { contact: 'dealer', type: 'expense', photo: 'dealership/category-7.webp', amounts: [200, 300], reason: 'Replacement parts',
-    text: 'I can get a set of filters and belts in with tomorrow’s order. Want me to add a set for your farm?' },
   { contact: 'dealer', type: 'credit', photo: 'dealership/category-7.webp', amounts: [100, 200], reason: 'Parts credit',
     text: 'I’ve put a credit on your parts account after that open day draw. It’ll come off an order with us.' },
   { contact: 'vet', type: 'expense', livestock: true, photo: 'animals/category-3.webp', amounts: [100, 200], reason: 'Routine livestock visit',
@@ -64,6 +62,7 @@ function fresh() {
     monthClosed: false, imported: [], notifications: false, sound: true,
   };
 }
+const isStandalonePartsOffer = event => event.type === 'expense' && event.reason === 'Replacement parts';
 function readState() {
   try {
     const saved = JSON.parse(localStorage.getItem(saveKey));
@@ -73,6 +72,11 @@ function readState() {
     saved.contactPreferences ??= { mechanic: true, dealer: true };
     saved.sound ??= true;
     saved.pendingMessages ??= [];
+    saved.pendingMessages = saved.pendingMessages.filter(item =>
+      !item.text?.startsWith('I can get a set of filters and belts in with tomorrow’s order.'));
+    for (const incident of saved.incidents) {
+      if (isStandalonePartsOffer(incident) && incident.stage === 'offer') incident.stage = 'closed';
+    }
     saved.lastAutomaticMessage ??= {};
     return saved;
   } catch {
@@ -376,7 +380,7 @@ function scheduleDelivery() {
 }
 
 function offer(event, deliver = automaticMessage) {
-  if (event.type === 'service') return;
+  if (event.type === 'service' || isStandalonePartsOffer(event)) return;
   const role = eventContact(event);
   if (!receivesEvents(role)) return;
   const recipient = assignedContact(role);
