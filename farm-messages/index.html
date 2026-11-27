@@ -6,8 +6,8 @@
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#0a281e">
   <title>Live Farm Messages | Farming Simulator Guide</title>
-  <link rel="stylesheet" href="messages.css?v=26">
-  <script src="messages.js?v=29" defer></script>
+  <link rel="stylesheet" href="messages.css?v=28">
+  <script src="messages.js?v=32" defer></script>
 </head>
 <body>
   <header class="site-header"><a href="../index.html">Farming Simulator Guide</a><a href="../farm-events-access.html">Farm Events</a></header>
@@ -20,7 +20,7 @@
       <header class="messages-top">
         <h1>Farm Messages</h1>
         <div class="header-calendar">
-          <span id="desktop-date"></span>
+          <div><span id="desktop-date"></span><small id="scheduled-status" hidden></small></div>
           <button id="desktop-advance" type="button" class="primary"></button>
         </div>
         <button id="open-farm-tools" type="button" aria-label="Farm settings" title="Farm settings" aria-haspopup="dialog">⋮</button>
@@ -97,12 +97,7 @@
           <form method="dialog"><button aria-label="Close farm settings" autofocus>×</button></form>
         </header>
         <div class="tools">
-        <details class="panel" open>
-          <summary>Farm settings</summary>
-          <div class="details-body">
-            <form id="settings" class="fields">
-              <details class="panel settings-wide">
-                <summary>Contact names and repairs</summary>
+        <form id="contact-settings-form" hidden>
                 <div class="details-body contact-settings">
                   <div class="settings-stack">
                     <fieldset id="contact-options" class="settings-stack">
@@ -122,10 +117,20 @@
 <label class="check"><input name="workshop" type="checkbox"> My farm has a workshop</label>
                   </div>
                 </div>
-              </details>
+          <div class="settings-footer">
+            <button id="cancel-contact-settings" type="button">Back</button>
+            <button class="primary" type="submit">Save and close</button>
+          </div>
+          <p id="contact-save-error" role="alert" hidden>This browser could not save your contact settings.</p>
+        </form>
+        <details id="main-settings-panel" class="panel" open>
+          <summary>Farm settings</summary>
+          <div class="details-body">
+            <form id="settings" class="fields">
+              <button id="open-contact-settings" type="button">Contact names and repairs</button>
               <label>Starting month <select name="start" aria-describedby="starting-month-note"></select></label>
               <p id="starting-month-note"></p>
-              <label>Days per month <select name="days"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option></select></label>
+              <label>Days per month <select name="days" size="7"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option></select></label>
               <div class="settings-stack">
               <label>New events per month <select name="frequency"><option value="random">Random range</option></select></label>
               <fieldset id="random-range" class="range-fields" hidden>
@@ -159,7 +164,7 @@
           </div>
         </details>
       </div>
-        <footer class="settings-footer">
+        <footer id="main-settings-footer" class="settings-footer">
           <p id="settings-save-error" role="alert" hidden></p>
           <button class="primary" type="submit" form="settings">Save and close</button>
         </footer>

@@ -449,3 +449,8 @@ main:has(#app:not([hidden])) {
   .header-calendar { order: 1; flex: 1 0 100%; }
   .header-calendar button { min-height: 44px; }
 }
+
+#settings select[name="days"] { max-inline-size: 10rem; }
+#settings select[name="days"] option { padding: .2rem .4rem; }
+
+#scheduled-status { display: block; margin-top: .2rem; }
