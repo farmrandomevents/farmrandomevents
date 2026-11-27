@@ -84,6 +84,7 @@ const assignedContact = role => farm.roleContacts?.[role] || role;
 const contactName = id => farm.names?.[id]?.trim() || people[id][0];
 let messageView = 'inbox';
 let selectedJobId;
+let replyingTo;
 let audio;
 let chimeEndsAt = 0;
 let toastTimer;
@@ -184,6 +185,7 @@ function notify(contact, text) {
   }
 }
 function message(contact, text, extra = {}) {
+  if (replyingTo) extra = { jobId: replyingTo.id, ...extra };
   farm.messages.push({ contact, text, date: dateStamp(), ...extra });
   if (!extra.sent && (contact !== farm.contact || messageView === 'inbox')) farm.unread[contact] = (farm.unread[contact] || 0) + 1;
   if (!extra.sent) notify(contact, text);
@@ -208,9 +210,19 @@ function selectContact(contact, jobId) {
 }
 function reply(label, action, className) {
   const contact = farm.contact;
+  const job = farm.incidents.find(item => item.id === selectedJobId && item.contact === contact);
   ($('reply-actions') || $('replies')).append(button(label, () => {
-    message(contact, label, { sent: true });
-    action();
+    replyingTo = job;
+    try {
+      message(contact, label, { sent: true });
+      action();
+      if (job?.stage === 'closed') {
+        job.closedMonth = monthId();
+        job.closeLabel = label === 'No thanks' ? 'Declined' : 'Completed';
+      }
+    } finally {
+      replyingTo = undefined;
+    }
     save();
     render();
     $('chat-title').focus({ preventScroll: true });
@@ -406,12 +418,12 @@ function offer(event, deliver = automaticMessage) {
       ? `I can fix it here. The parts will be ${money(10000)}.`
       : `Workshop drop-off is ${money(30000)}, or we can come to you for ${money(40000)}.`;
     incident.replyContext = `There’s a fault on your smallest tractor. ${quote}`;
-    deliver(incident.contact, incident.replyContext, info);
+    deliver(incident.contact, incident.replyContext, { ...info, jobId: incident.id });
     return;
   }
   const quote = amount ? ` It’ll be ${money(amount)}.` : '';
   incident.replyContext = event.text + quote;
-  deliver(recipient, incident.replyContext, info);
+  deliver(recipient, incident.replyContext, { ...info, jobId: incident.id });
 }
 const repairGuidance = {
   battery: 'Leave the tractor exactly where it stopped. Use another machine until the repair is complete.',
@@ -422,7 +434,7 @@ const repairGuidance = {
 function repairUpdate(job, text, guidance = repairGuidance[job.scenario], deliver = message) {
   job.replyContext = text;
   job.guidance = guidance;
-  deliver(job.contact, text, { guidance });
+  deliver(job.contact, text, { guidance, jobId: job.id });
 }
 
 function repairTime(hour) {
@@ -451,6 +463,7 @@ function finishRepairStep(job) {
   }
   job.stage = job.route === 'drop-off' ? 'offer' : 'closed';
   job.step = 'collect';
+  if (job.stage === 'closed') job.closedMonth = monthId();
   addEntry(contactName(job.contact), job.route === 'farm' ? `${job.item} repair parts` : `${job.item} repair`, job.amount);
   repairUpdate(job, job.route === 'drop-off'
     ? 'All fixed. You can collect the header from the dealership.'
@@ -531,8 +544,9 @@ function runDay() {
         automaticMessage(incident.contact, `Bit more to it than I thought. I’ll need another two days on the ${incident.item}. The quote still stands.`);
       } else {
         incident.stage = 'closed';
+        incident.closedMonth = monthId();
         addEntry(contactName(incident.contact), `${incident.item} repair`, incident.amount);
-        automaticMessage(incident.contact, `The ${incident.item} is fixed and ready to collect. You can use it again. I’ve sent the invoice to ${contactName('accountant')}.`);
+        automaticMessage(incident.contact, `The ${incident.item} is fixed and ready to collect. You can use it again. I’ve sent the invoice to ${contactName('accountant')}.`, { jobId: incident.id });
       }
     }
   }
@@ -633,10 +647,6 @@ function closeMonth() {
   ].join('\n'));
 }
 
-function pendingReplies(contact) {
-  return farm.incidents.filter(incident => incident.contact === contact &&
-    ['offer', 'drop-off'].includes(incident.stage));
-}
 function replyTopic(incident) {
   if (incident.scenario) return { battery: 'Dead battery', tyre: 'Slow puncture', header: 'Combine header fault' }[incident.scenario];
   if (incident.type === 'repair') return incident.item + ' repair';
@@ -679,27 +689,18 @@ function renderReplies() {
     }
     return;
   }
-  const selectedJob = farm.incidents.find(item => item.id === selectedJobId && item.contact === farm.contact);
-  if (selectedJob?.type === 'repair' && ['parked', 'repairing', 'closed'].includes(selectedJob.stage)) {
-    const text = selectedJob.stage === 'parked'
-      ? `Keep the ${selectedJob.item} parked. I’ll check in next month to arrange the repair.`
-      : selectedJob.stage === 'repairing'
-        ? `The ${selectedJob.item} is still in the workshop. I’ll text you when it’s ready to use again.`
-        : `The ${selectedJob.item} is fixed. You can use it again.`;
-    $('replies').append(node('p', replyTopic(selectedJob), 'reply-topic'), node('p', text, 'reply-context'));
-    return;
-  }
-  if (farm.monthClosed) {
-    $('replies').append(node('p', `This month’s accounts are ready. Reply to ${contactName('accountant')} to open the next month.`));
-    return;
-  }
-  const pending = pendingReplies(farm.contact);
-  const incident = pending.find(item => item.id === selectedJobId) || pending[0];
+  const items = farm.incidents.filter(item => item.contact === farm.contact &&
+    (['offer', 'drop-off'].includes(item.stage) ||
+      (item.type === 'repair' && item.stage !== 'closed') ||
+      (item.stage === 'closed' && item.closedMonth === monthId())));
+  const incident = items.find(item => item.id === selectedJobId) ||
+    items.find(item => item.stage !== 'closed') || items.at(-1);
   if (!incident) {
     if (latestIncoming) $('replies').append(node('p', latestIncoming.text, 'reply-context'));
     $('replies').append(node('p', 'No reply needed right now.'));
     return;
   }
+  selectedJobId = incident.id;
   const contact = incident.contact;
   const leaveParked = () => {
     incident.stage = 'parked';
@@ -707,22 +708,34 @@ function renderReplies() {
   };
   const actions = node('div', undefined, 'reply-actions');
   actions.id = 'reply-actions';
-  actions.append(node('p', incident.replyContext || incident.text, 'reply-context'));
-  if (pending.length > 1) {
-    for (const item of pending) {
-      const heading = button(replyTopic(item), () => {
-        selectedJobId = item.id;
-        renderReplies();
-        $('reply-request-' + item.id).focus({ preventScroll: true });
-      }, 'reply-request');
-      heading.id = 'reply-request-' + item.id;
-      heading.setAttribute('aria-expanded', String(item === incident));
-      if (item === incident) heading.setAttribute('aria-controls', actions.id);
-      $('replies').append(heading);
-      if (item === incident) $('replies').append(actions);
+  const completed = incident.stage === 'closed';
+  for (const item of items) {
+    const label = item.stage === 'closed' ? `✓ ${replyTopic(item)} · ${item.closeLabel || 'Completed'}` : replyTopic(item);
+    const heading = button(label, () => {
+      selectedJobId = item.id;
+      renderReplies();
+      $('reply-request-' + item.id).focus({ preventScroll: true });
+    }, item.stage === 'closed' ? 'reply-request completed-request' : 'reply-request');
+    heading.id = 'reply-request-' + item.id;
+    heading.setAttribute('aria-expanded', String(item === incident));
+    $('replies').append(heading);
+    if (item === incident) {
+      heading.setAttribute('aria-controls', actions.id);
+      $('replies').append(actions);
     }
-  } else {
-    $('replies').append(node('p', replyTopic(incident), 'reply-topic'), actions);
+  }
+  const thread = farm.messages.filter(entry => entry.jobId === incident.id);
+  const visible = completed ? thread.slice(-1) : thread;
+  for (const entry of visible) {
+    actions.append(node('p', entry.sent ? `You: ${entry.text}` : entry.text, entry.sent ? 'reply-context job-reply' : 'reply-context'));
+  }
+  if (!visible.length || (!completed && thread.at(-1)?.text !== incident.replyContext)) {
+    actions.append(node('p', incident.replyContext || incident.text, 'reply-context'));
+  }
+  if (completed || incident.stage === 'repairing' || incident.stage === 'parked') return;
+  if (farm.monthClosed) {
+    actions.append(node('p', `This month’s accounts are ready. Reply to ${contactName('accountant')} to open the next month.`));
+    return;
   }
   if (incident.scenario) {
     if (incident.guidance && farm.settings.guidance) actions.append(node('p', incident.guidance, 'game-note'));
@@ -880,10 +893,10 @@ function renderContacts() {
   if (!contacts.length) $('contacts').append(node('p', 'No matching contacts.', 'empty-chat'));
 }
 function renderJobs() {
-  const jobs = farm.incidents.filter(item => item.type === 'repair' && item.stage !== 'closed');
+  const jobs = farm.incidents.filter(item => item.type === 'repair' && (item.stage !== 'closed' || item.closedMonth === monthId()));
   $('no-jobs').hidden = jobs.length > 0;
   $('restrictions').replaceChildren(...jobs.map(item => {
-    const status = item.stage === 'repairing' ? (item.scenario
+    const status = item.stage === 'closed' ? '✓ Completed' : item.stage === 'repairing' ? (item.scenario
       ? `${item.step === 'dealer-visit' ? 'Inspection booked' : 'Repair in progress'} · ${item.dueHour < (farm.tick + 1) * 24 ? repairTime(item.dueHour) : 'next farm day'}`
       : 'Repair in progress') :
       item.scenario && item.step === 'collect' ? 'Ready to collect' :
@@ -895,7 +908,7 @@ function renderJobs() {
       save();
       render();
       (document.querySelector('#replies button') || $('chat-title')).focus();
-    }, 'job-link');
+    }, item.stage === 'closed' ? 'job-link completed-request' : 'job-link');
   }));
 }
 function renderAccounts() {

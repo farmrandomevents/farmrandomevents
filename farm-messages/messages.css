@@ -454,3 +454,11 @@ main:has(#app:not([hidden])) {
 #settings select[name="days"] option { padding: .2rem .4rem; }
 
 #scheduled-status { display: block; margin-top: .2rem; }
+
+#replies .reply-request.completed-request,
+#restrictions .completed-request {
+  background: #e9cc78;
+  border-color: #9b7629;
+  color: #263729;
+}
+#replies .job-reply { background: #dce7dc; }
