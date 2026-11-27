@@ -56,6 +56,7 @@ function fresh() {
     [id, `${choose(firstNames)} ${name.split(' ').at(-1)}`]));
   return {
     names,
+    contactPreferences: { mechanic: true, dealer: true },
     month: 2, year: 1, day: 1, tick: 0, started: false, contact: 'mechanic',
     settings: { currency: 'GBP', repairProvider: 'dealer', mechanicSalary: 12000, workshop: false, start: 2, days: 3, frequency: '1', delivery: 'day', mechanicPayroll: false, randomMin: 1, randomMax: 10, billing: 1, guidance: false, animals: false, sheep: false, sync: false },
     days: 3, billing: 1, billingMonths: 0, serial: 0,
@@ -69,6 +70,7 @@ function readState() {
     if (!saved) return fresh();
     const payroll = saved.settings?.mechanicPayroll ?? (saved.settings?.repairProvider === 'staff');
     saved.settings = { ...fresh().settings, ...saved.settings, mechanicPayroll: payroll };
+    saved.contactPreferences ??= { mechanic: true, dealer: true };
     saved.sound ??= true;
     saved.pendingMessages ??= [];
     saved.lastAutomaticMessage ??= {};
@@ -970,6 +972,8 @@ function render() {
   $('start-chats').hidden = farm.started;
   $('setup-farm').hidden = farm.started;
   renderJobs();
+  const hasContacts = Object.keys(people).some(receivesEvents);
+  $('message-setup-status').hidden = hasContacts;
   const update = $('next-repair-update');
   const next = nextRepairUpdate();
   update.hidden = !Number.isFinite(next);
@@ -1236,6 +1240,7 @@ $('contact-settings-form').addEventListener('submit', event => {
     return;
   }
   showContactSettings(false);
+  recoverEmptyStart();
   render();
   $('open-contact-settings').focus();
 });
@@ -1265,9 +1270,16 @@ $('reset-dialog').addEventListener('close', () => {
   save();
   render();
 });
+function recoverEmptyStart() {
+  if (!farm.started || farm.monthClosed || farm.tick !== 0 || farm.messages.length ||
+      farm.queue.length || farm.pendingMessages.length || farm.incidents.length) return;
+  beginMonth();
+  save();
+}
 function openDemo() {
   $('app').hidden = false;
   loadSettings();
+  recoverEmptyStart();
   $('notify').textContent = farm.notifications ? 'Disable browser notifications' : 'Enable browser notifications';
   importRewards();
   save();
