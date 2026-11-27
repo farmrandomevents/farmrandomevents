@@ -6,8 +6,8 @@
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#0a281e">
   <title>Live Farm Messages | Farming Simulator Guide</title>
-  <link rel="stylesheet" href="messages.css?v=19">
-  <script src="messages.js?v=20" defer></script>
+  <link rel="stylesheet" href="messages.css?v=26">
+  <script src="messages.js?v=29" defer></script>
 </head>
 <body>
   <header class="site-header"><a href="../index.html">Farming Simulator Guide</a><a href="../farm-events-access.html">Farm Events</a></header>
@@ -19,6 +19,10 @@
     <div id="app" hidden>
       <header class="messages-top">
         <h1>Farm Messages</h1>
+        <div class="header-calendar">
+          <span id="desktop-date"></span>
+          <button id="desktop-advance" type="button" class="primary"></button>
+        </div>
         <button id="open-farm-tools" type="button" aria-label="Farm settings" title="Farm settings" aria-haspopup="dialog">⋮</button>
       </header>
       <div id="toast-region" aria-live="polite"></div>
@@ -37,7 +41,6 @@
         <section class="panel chat" aria-labelledby="chat-title">
           <header id="chat-header"></header>
           <div class="composer">
-            <div id="composer-label" hidden>Quick reply</div>
             <div id="replies" aria-label="Available replies"></div>
           </div>
           <details id="conversation-history">
@@ -101,13 +104,20 @@
               <details class="panel settings-wide">
                 <summary>Contact names and repairs</summary>
                 <div class="details-body contact-settings">
-                  <div id="contact-names" class="settings-stack"></div>
+                  <div class="settings-stack">
+                    <fieldset id="contact-options" class="settings-stack">
+                      <legend>Incoming messages</legend>
+                    </fieldset>
+                    <div id="contact-names" class="settings-stack"></div>
+                  </div>
                   <div class="settings-stack">
                     <label>Repairs <select name="repairProvider"><option value="dealer">Local dealer</option><option value="staff">Employ a full-time mechanic</option></select></label>
+              <div id="mechanic-name-setting" class="settings-stack"></div>
+              <label class="check"><input name="mechanicPayroll" type="checkbox"> On the payroll</label>
               <div id="mechanic-pay" class="settings-stack" hidden>
 <label>Salary preset <select id="salary-preset"></select></label>
-              <label><span>Annual salary <span id="salary-currency">£</span></span> <input name="mechanicSalary" type="number" min="100" max="1000000" step="100" required></label>
-              <div class="salary-controls"><button type="button" id="salary-down">−£100</button><button type="button" id="salary-up">+£100</button></div>
+              <label><span>Annual salary <span id="salary-currency">£</span></span> <input name="mechanicSalary" type="number" min="0" max="1000000" step="100" required></label>
+              <div class="salary-controls"><button type="button" id="salary-down-1000">−£1,000</button><button type="button" id="salary-down">−£100</button><button type="button" id="salary-up">+£100</button><button type="button" id="salary-up-1000">+£1,000</button></div>
               </div>
 <label class="check"><input name="workshop" type="checkbox"> My farm has a workshop</label>
                   </div>
@@ -123,6 +133,7 @@
                 <label>Maximum <input name="randomMax" type="number" min="1" max="10" step="1" required disabled></label>
               </fieldset>
               </div>
+              <label>Message delivery <select name="delivery"><option value="day">On each farm day</option><option value="staggered">Staggered · every 5–10 minutes</option></select></label>
               <label>Farm currency <select name="currency"><option value="GBP">Pounds (£)</option><option value="USD">US dollars ($)</option><option value="EUR">Euros (€)</option></select></label>
               <label>Billing interval <select name="billing"><option value="1">Monthly</option><option value="2">Every two months</option><option value="3">Quarterly</option><option value="6">Every six months</option><option value="12">Annually</option></select></label>
               <label class="check"><input name="guidance" type="checkbox"> Show gameplay notes</label>

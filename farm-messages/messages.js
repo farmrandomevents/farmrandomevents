@@ -46,18 +46,21 @@ const catalogue = [
     guidance: 'If you keep sheep, add two lambs to your flock using your usual house rules.' },
   { contact: 'dealer', type: 'note', text: 'Your parts catalogue is at the counter. Pick it up whenever you’re passing.' },
   { contact: 'neighbour', type: 'note', season: [0, 1, 11], text: 'The lane was icy at the bend this morning. Take it steady if you’re heading out.' },
-  { contact: 'worker', type: 'note', text: 'I found the spare gate pin in the workshop. I’ve left it on the bench.' },
   { contact: 'supplier', type: 'note', text: 'Just a heads-up that we’ll be closing early at the end of the month for stocktaking.' },
   { contact: 'accountant', type: 'income', amounts: [200, 400], reason: 'Insurance compensation',
     text: 'The insurer has paid the agreed settlement. I’ve recorded it under compensation.' },
 ];
 
 function fresh() {
+  const firstNames = ['Alex', 'Jamie', 'Morgan', 'Robin', 'Sam', 'Taylor'];
+  const names = Object.fromEntries(Object.entries(people).map(([id, [name]]) =>
+    [id, `${choose(firstNames)} ${name.split(' ').at(-1)}`]));
   return {
+    names,
     month: 2, year: 1, day: 1, tick: 0, started: false, contact: 'mechanic',
-    settings: { currency: 'GBP', repairProvider: 'dealer', mechanicSalary: 12000, workshop: false, start: 2, days: 3, frequency: '1', randomMin: 1, randomMax: 10, billing: 1, guidance: false, animals: false, sheep: false, sync: false },
+    settings: { currency: 'GBP', repairProvider: 'dealer', mechanicSalary: 12000, workshop: false, start: 2, days: 3, frequency: '1', delivery: 'day', mechanicPayroll: false, randomMin: 1, randomMax: 10, billing: 1, guidance: false, animals: false, sheep: false, sync: false },
     days: 3, billing: 1, billingMonths: 0, serial: 0,
-    queue: [], messages: [], incidents: [], ledger: [], staff: [], statements: [], unread: {},
+    queue: [], pendingMessages: [], lastAutomaticMessage: {}, messages: [], incidents: [], ledger: [], staff: [], statements: [], unread: {},
     monthClosed: false, imported: [], notifications: false, sound: true,
   };
 }
@@ -65,20 +68,25 @@ function readState() {
   try {
     const saved = JSON.parse(localStorage.getItem(saveKey));
     if (!saved) return fresh();
-    saved.settings = { ...fresh().settings, ...saved.settings };
+    const payroll = saved.settings?.mechanicPayroll ?? (saved.settings?.repairProvider === 'staff');
+    saved.settings = { ...fresh().settings, ...saved.settings, mechanicPayroll: payroll };
     saved.sound ??= true;
+    saved.pendingMessages ??= [];
+    saved.lastAutomaticMessage ??= {};
     return saved;
   } catch {
     return fresh();
   }
 }
 let farm = readState();
+const assignedContact = role => farm.roleContacts?.[role] || role;
 const contactName = id => farm.names?.[id]?.trim() || people[id][0];
 let messageView = 'inbox';
 let selectedJobId;
 let audio;
 let chimeEndsAt = 0;
 let toastTimer;
+let deliveryTimer;
 const monthName = () => months[farm.month];
 const period = () => `${monthName()} · Year ${farm.year}`;
 const dateStamp = () => `${period()} · Day ${farm.day}`;
@@ -179,6 +187,16 @@ function message(contact, text, extra = {}) {
   if (!extra.sent && (contact !== farm.contact || messageView === 'inbox')) farm.unread[contact] = (farm.unread[contact] || 0) + 1;
   if (!extra.sent) notify(contact, text);
 }
+function automaticMessage(contact, text, extra = {}) {
+  const previous = farm.lastAutomaticMessage[contact];
+  const dueAt = previous == null ? Date.now() : Math.max(Date.now(), previous + messageDelay());
+  farm.lastAutomaticMessage[contact] = dueAt;
+  if (dueAt > Date.now()) {
+    farm.pendingMessages.push({ contact, text, extra, dueAt });
+  } else {
+    message(contact, text, extra);
+  }
+}
 function selectContact(contact, jobId) {
   if (contact !== farm.contact) $('conversation-history').open = false;
   selectedJobId = jobId;
@@ -189,7 +207,6 @@ function selectContact(contact, jobId) {
 }
 function reply(label, action, className) {
   const contact = farm.contact;
-  $('composer-label').hidden = false;
   ($('reply-actions') || $('replies')).append(button(label, () => {
     message(contact, label, { sent: true });
     action();
@@ -264,73 +281,136 @@ function monthlyEventCount(settings) {
   if (settings.frequency !== 'random') return Number(settings.frequency);
   return settings.randomMin + Math.floor(Math.random() * (settings.randomMax - settings.randomMin + 1));
 }
+function repairContact() {
+  return farm.settings.repairProvider === 'staff' ? 'mechanic' : 'dealer';
+}
+function receivesEvents(contact) {
+  return farm.contactPreferences?.[contact] !== false;
+}
+function eventContact(event) {
+  return event.type === 'repair' && event.item === 'tractor' ? repairContact() : event.contact;
+}
 function planMonth(first = false) {
   const count = monthlyEventCount(farm.settings);
-  const pool = catalogue.filter(event => (!event.livestock || farm.settings.animals) && (!event.sheep || farm.settings.sheep) &&
+  const pool = catalogue.filter(event => receivesEvents(eventContact(event)) && (!event.livestock || farm.settings.animals) && (!event.sheep || farm.settings.sheep) &&
     !(event.type === 'repair' && farm.incidents.some(incident => incident.type === 'repair' &&
       incident.item === event.item && incident.stage !== 'closed')));
+  const senderOf = event => assignedContact(eventContact(event));
   const scheduled = [];
-  if (first) scheduled.push(catalogue[0]);
+  const senderCounts = new Map();
+  if (first && pool.includes(catalogue[0])) {
+    scheduled.push(catalogue[0]);
+    senderCounts.set(senderOf(catalogue[0]), 1);
+  }
   while (scheduled.length < count) {
     const available = pool.filter(event => !scheduled.includes(event));
     if (!available.length) break;
-    const weighted = available.flatMap(event => event.season?.includes(farm.month) ? [event, event, event] : [event]);
+    const senders = [...new Set(available.map(senderOf))];
+    const fewest = Math.min(...senders.map(sender => senderCounts.get(sender) || 0));
+    const sender = choose(senders.filter(id => (senderCounts.get(id) || 0) === fewest));
+    const weighted = available.filter(event => senderOf(event) === sender)
+      .flatMap(event => event.season?.includes(farm.month) ? [event, event, event] : [event]);
     scheduled.push(choose(weighted));
+    senderCounts.set(sender, fewest + 1);
   }
-  const dayCounts = Array(farm.days).fill(0);
-  farm.queue = scheduled.map((event, index) => {
-    const fewest = Math.min(...dayCounts);
-    const availableDays = dayCounts.flatMap((count, day) => count === fewest ? [day] : []);
-    const day = first && index === 0 ? 0 : choose(availableDays);
-    dayCounts[day]++;
-    return { event, day: day + 1 };
-  });
+  if (farm.settings.delivery === 'staggered') {
+    farm.queue = scheduled.map(event => ({ event }));
+    if (farm.queue.length) farm.queue[0].dueAt = Date.now() + messageDelay();
+    return;
+  }
+  // Spread the planned order over the farm days without putting repeat senders first.
+  farm.queue = scheduled.map((event, index) => ({
+    event,
+    day: 1 + Math.floor(index * farm.days / scheduled.length),
+  }));
 }
+function messageDelay() {
+  return (300 + Math.floor(Math.random() * 301)) * 1000;
+}
+function scheduleDelivery() {
+  clearTimeout(deliveryTimer);
+  const eventDueAt = farm.monthClosed ? undefined : farm.queue[0]?.dueAt;
+  const dueAt = Math.min(eventDueAt ?? Infinity, ...farm.pendingMessages.map(item => item.dueAt));
+  if (!Number.isFinite(dueAt)) return;
+  deliveryTimer = setTimeout(() => {
+    const latest = readState();
+    const now = Date.now();
+    const ready = latest.pendingMessages.filter(item => item.dueAt <= now);
+    const eventReady = !latest.monthClosed && latest.queue[0]?.dueAt <= now;
+    if (!ready.length && !eventReady) return;
+    farm = latest;
+    // Deliver at most one queued update per contact even after a suspended tab wakes.
+    const deliveryTimes = new Map();
+    farm.pendingMessages = farm.pendingMessages.filter(item => {
+      const previous = deliveryTimes.get(item.contact);
+      if (previous !== undefined) {
+        item.dueAt = previous + messageDelay();
+        deliveryTimes.set(item.contact, item.dueAt);
+        return true;
+      }
+      if (item.dueAt > now) return true;
+      message(item.contact, item.text, item.extra);
+      deliveryTimes.set(item.contact, now);
+      return false;
+    });
+    for (const [contact, time] of deliveryTimes) farm.lastAutomaticMessage[contact] = time;
+    if (eventReady) {
+      offer(farm.queue.shift().event);
+      if (farm.queue.length) farm.queue[0].dueAt = now + messageDelay();
+    }
+    save();
+    render();
+  }, Math.max(0, dueAt - Date.now()));
+}
+
 function offer(event) {
+  const role = eventContact(event);
+  if (!receivesEvents(role)) return;
+  const recipient = assignedContact(role);
+  if (event.type === 'note' && event.text === 'I found the spare gate pin in the workshop. I’ve left it on the bench.') return;
   const amount = choose(event.amounts || [0]) * 100;
   const info = { photo: event.photo, guidance: event.guidance };
-  const source = contactName(event.contact);
+  const source = contactName(recipient);
   if (event.type === 'income' || event.type === 'credit') {
     addEntry(source, event.reason, amount, event.type);
-    message(event.contact, `${event.text} ${money(amount)}.`, info);
+    automaticMessage(recipient, `${event.text} ${money(amount)}.`, info);
     return;
   }
   if (event.type === 'note') {
-    message(event.contact, event.text, info);
+    automaticMessage(recipient, event.text, info);
     return;
   }
-  const incident = { ...event, id: nextId(), amount, stage: 'offer' };
+  const incident = { ...event, contact: recipient, id: nextId(), amount, stage: 'offer' };
   farm.incidents.push(incident);
   if (event.type === 'repair' && event.item === 'tractor') {
     incident.onFarm = farm.settings.repairProvider === 'staff';
-    incident.contact = incident.onFarm ? 'mechanic' : 'dealer';
     incident.amount = incident.onFarm ? 10000 : 30000;
     incident.parking = farm.settings.workshop ? 'farm workshop' : 'farmyard';
     const quote = incident.onFarm
       ? `I can fix it here. The parts will be ${money(10000)}.`
       : `Workshop drop-off is ${money(30000)}, or we can come to you for ${money(40000)}.`;
     incident.replyContext = `There’s a fault on your smallest tractor. ${quote}`;
-    message(incident.contact, incident.replyContext, info);
+    automaticMessage(incident.contact, incident.replyContext, info);
     return;
   }
   const quote = amount ? ` It’ll be ${money(amount)}.` : '';
   incident.replyContext = event.text + quote;
-  message(event.contact, incident.replyContext, info);
+  automaticMessage(recipient, incident.replyContext, info);
 }
 function runDay() {
   for (const incident of farm.incidents) {
     if (incident.stage === 'deferred' && farm.tick >= incident.due) {
       incident.stage = 'offer';
-      message(incident.contact, 'Just checking whether you still want that service. Happy to leave it with you.');
+      automaticMessage(incident.contact, 'Just checking whether you still want that service. Happy to leave it with you.');
     } else if (incident.stage === 'repairing' && farm.tick >= incident.due) {
       if (incident.delay) {
         incident.delay = false;
         incident.due += 2;
-        message(incident.contact, `Bit more to it than I thought. I’ll need another two days on the ${incident.item}. The quote still stands.`);
+        automaticMessage(incident.contact, `Bit more to it than I thought. I’ll need another two days on the ${incident.item}. The quote still stands.`);
       } else {
         incident.stage = 'closed';
         addEntry(contactName(incident.contact), `${incident.item} repair`, incident.amount);
-        message(incident.contact, `The ${incident.item} is fixed and ready to collect. I’ve sent the invoice to ${contactName('accountant')}.`);
+        automaticMessage(incident.contact, `The ${incident.item} is fixed and ready to collect. I’ve sent the invoice to ${contactName('accountant')}.`);
       }
     }
   }
@@ -364,7 +444,7 @@ function remindAboutParkedRepairs() {
     if (incident.type !== 'repair' || incident.stage !== 'parked') continue;
     incident.stage = 'offer';
     incident.replyContext = `The ${incident.item} is still out of use. Keep it parked until it’s fixed. Shall we arrange the repair this month?`;
-    message(incident.contact, incident.replyContext);
+    automaticMessage(incident.contact, incident.replyContext);
   }
 }
 function nextMonth() {
@@ -385,10 +465,10 @@ function closeMonth() {
     employee.months++;
     addEntry(employee.name, 'Monthly salary', amount, 'expense', { applied: employee.applied });
   }
-  if (farm.settings.repairProvider === 'staff') {
+  if (farm.settings.mechanicPayroll && farm.settings.mechanicSalary > 0) {
     const annualPence = farm.settings.mechanicSalary * 100;
     const instalment = Math.floor(annualPence / 12) + (farm.month < annualPence % 12 ? 1 : 0);
-    addEntry(people.mechanic[0], 'Farm mechanic salary', instalment);
+    addEntry(contactName(assignedContact('mechanic')), 'Farm mechanic salary', instalment);
   }
   const entries = farm.ledger.filter(entry => entry.month === monthId());
   const costs = total(entries.filter(entry => entry.type === 'expense'), net);
@@ -401,6 +481,7 @@ function closeMonth() {
     ...entries.map(entry => `• ${entry.source} · ${entry.reason} · ${money(entry.type === 'expense' ? net(entry) : entry.amount)}${entry.applied ? ' (record only)' : ''}`),
   ];
   farm.monthClosed = true;
+  farm.queue = [];
   message('accountant', summary.join('\n'));
   if (++farm.billingMonths < farm.billing) return;
 
@@ -433,7 +514,6 @@ function replyTopic(incident) {
 }
 function renderReplies() {
   $('replies').replaceChildren();
-  $('composer-label').hidden = true;
   const latestIncoming = farm.messages.findLast(item => item.contact === farm.contact && !item.sent);
   if (!farm.started) {
     $('replies').append(node('p', 'Open Farm settings to match your save, then start receiving messages.'));
@@ -442,7 +522,11 @@ function renderReplies() {
   if (farm.contact === 'accountant') {
     if (latestIncoming) $('replies').append(node('p', latestIncoming.text, 'reply-context'));
     if (farm.day === farm.days && !farm.monthClosed) {
-      reply(`Can I have ${monthName()}’s accounts?`, closeMonth, 'primary');
+      if (scheduledMessagesRemaining()) {
+        $('replies').append(node('p', 'The monthly accounts will be ready after the remaining scheduled messages arrive.'));
+      } else {
+        reply(`Can I have ${monthName()}’s accounts?`, closeMonth, 'primary');
+      }
     }
     if (farm.monthClosed) reply('Thanks very much', nextMonth, 'primary');
     reply('What’s outstanding at the moment?', () => {
@@ -476,13 +560,12 @@ function renderReplies() {
     incident.stage = 'parked';
     message(contact, `Keep the ${incident.item} parked. I’ll check in next month.`);
   };
-  $('composer-label').hidden = false;
   const actions = node('div', undefined, 'reply-actions');
   actions.id = 'reply-actions';
   actions.append(node('p', incident.replyContext || incident.text, 'reply-context'));
   if (pending.length > 1) {
-    for (const [index, item] of pending.entries()) {
-      const heading = button(`${index + 1}. ${replyTopic(item)}`, () => {
+    for (const item of pending) {
+      const heading = button(replyTopic(item), () => {
         selectedJobId = item.id;
         renderReplies();
         $('reply-request-' + item.id).focus({ preventScroll: true });
@@ -620,6 +703,8 @@ function renderContacts() {
   for (const [index, item] of farm.messages.entries()) latest.set(item.contact, { item, index });
   const query = $('contact-search').value.trim().toLowerCase();
   const contacts = Object.entries(people).filter(([id]) =>
+    (id === 'accountant' || Object.keys(people).some(role => assignedContact(role) === id && receivesEvents(role)) || latest.has(id) ||
+      farm.incidents.some(item => item.contact === id && item.stage !== 'closed')) &&
     contactName(id).toLowerCase().startsWith(query)).sort(([a], [b]) =>
     (latest.get(b)?.index ?? -1) - (latest.get(a)?.index ?? -1));
   for (const [id, [, role]] of contacts) {
@@ -701,7 +786,12 @@ $('message-nav').addEventListener('click', event => {
 $('contact-search').addEventListener('input', renderContacts);
 $('start-chats').addEventListener('click', () => $('advance').click());
 
+function scheduledMessagesRemaining() {
+  return farm.pendingMessages.length + (farm.queue[0]?.dueAt !== undefined ? farm.queue.length : 0);
+}
+
 function render() {
+  scheduleDelivery();
   renderSound();
   entryFields();
   $('accounts-icon').textContent = currencies[farm.settings.currency];
@@ -714,50 +804,85 @@ function render() {
   $('day').textContent = `Day ${farm.day} of ${farm.days}`;
   $('advance').textContent = !farm.started ? 'Start farm messages' :
     farm.day < farm.days ? `Advance to Day ${farm.day + 1}` : 'Open accountant chat';
+  const desktopAdvance = $('desktop-advance');
+  const endOfMonth = farm.started && farm.day === farm.days;
+  const waiting = endOfMonth && !farm.monthClosed ? scheduledMessagesRemaining() : 0;
+  $('desktop-date').textContent = `${monthName()} · ${$('day').textContent}`;
+  desktopAdvance.disabled = waiting > 0;
+  desktopAdvance.textContent = waiting ? `${waiting} scheduled ${waiting === 1 ? 'message' : 'messages'} left` :
+    endOfMonth ? `${farm.monthClosed ? 'Start' : 'Close month and start'} ${months[(farm.month + 1) % 12]}` :
+    !farm.started ? 'Start farm messages' : `Next day`;
   renderContacts();
   renderChat();
   renderAccounts();
 }
 
 const settings = $('settings').elements;
+const contactOptions = Object.entries(people).map(([id, [, role]]) => {
+  const label = node('label', undefined, 'check');
+  const input = node('input');
+  input.type = 'checkbox';
+  label.append(input, document.createTextNode(role));
+  const assignment = node('select');
+  assignment.setAttribute('aria-label', `Contact for ${role}`);
+  if (id !== 'accountant') label.append(assignment);
+  $('contact-options').append(label);
+  return [id, input, assignment];
+
+});
 const nameFields = Object.entries(people).map(([id, [name, role]]) => {
-  const label = node('label', role);
+  const label = node('label');
+  const caption = node('span', role);
   const input = node('input');
   input.type = 'text';
   input.maxLength = 48;
   input.placeholder = name;
-  label.append(input);
-  $('contact-names').append(label);
+  label.append(caption, input);
+  if (id === 'mechanic') caption.id = 'mechanic-name-label';
+  $(id === 'mechanic' ? 'mechanic-name-setting' : 'contact-names').append(label);
   return [id, input];
 });
+function refreshAssignments() {
+  for (const [role, , assignment] of contactOptions) {
+    const selected = assignment.value || role;
+    assignment.replaceChildren(...nameFields.filter(([id]) => role === 'accountant' ? id === role : id !== 'accountant').map(([id, field]) =>
+      new Option(field.value.trim() || people[id][0], id)));
+    assignment.value = selected;
+  }
+}
+for (const [, field] of nameFields) field.addEventListener('input', refreshAssignments);
 months.forEach((month, index) => settings.start.add(new Option(month, index)));
 for (let count = 1; count <= 10; count++) settings.frequency.add(new Option(count, count));
-const salaryPresets = [20000, 25000, 30000, 35000, 40000, 50000, 60000];
+const salaryPresets = [0, 1000, 2000, 5000, 10000, 20000, 25000, 30000, 35000, 40000, 50000, 60000];
+const salaryAdjustments = [['salary-down-1000', -1000], ['salary-down', -100], ['salary-up', 100], ['salary-up-1000', 1000]];
 function renderSalaryPicker() {
   const symbol = currencies[settings.currency.value];
   const salary = Number(settings.mechanicSalary.value);
   $('salary-currency').textContent = symbol;
   $('salary-preset').replaceChildren(new Option('Choose a salary', ''),
-    ...salaryPresets.map(amount => new Option(symbol + amount.toLocaleString('en-GB'), amount)));
+    ...salaryPresets.map(amount => new Option(amount === 0 ? 'No salary' : symbol + amount.toLocaleString('en-GB'), amount)));
   $('salary-preset').value = salaryPresets.includes(salary) ? String(salary) : '';
-  $('salary-down').textContent = '−' + symbol + '100';
-  $('salary-up').textContent = '+' + symbol + '100';
+  for (const [id, step] of salaryAdjustments) {
+    $(id).textContent = (step < 0 ? '−' : '+') + symbol + Math.abs(step).toLocaleString('en-GB');
+  }
 }
 $('salary-preset').addEventListener('change', event => {
   if (event.target.value) settings.mechanicSalary.value = event.target.value;
 });
 function updateRepairSettings() {
   const employsMechanic = settings.repairProvider.value === 'staff';
-  $('mechanic-pay').hidden = !employsMechanic;
-  settings.mechanicSalary.disabled = !employsMechanic;
+  $('mechanic-name-label').textContent = employsMechanic ? 'Full-time mechanic’s name' : 'Mechanic’s name';
+  $('mechanic-pay').hidden = !settings.mechanicPayroll.checked;
+  settings.mechanicSalary.disabled = !settings.mechanicPayroll.checked;
 }
 settings.repairProvider.addEventListener('change', updateRepairSettings);
+settings.mechanicPayroll.addEventListener('change', updateRepairSettings);
 settings.currency.addEventListener('change', renderSalaryPicker);
 settings.mechanicSalary.addEventListener('change', renderSalaryPicker);
-for (const [id, step] of [['salary-down', -100], ['salary-up', 100]]) {
+for (const [id, step] of salaryAdjustments) {
   $(id).addEventListener('click', () => {
-    const current = settings.mechanicSalary.valueAsNumber || 30000;
-    settings.mechanicSalary.value = Math.max(100, Math.min(1000000, Math.round(current / 100) * 100 + step));
+    const current = settings.mechanicSalary.valueAsNumber || 0;
+    settings.mechanicSalary.value = Math.max(0, Math.min(1000000, Math.round(current / 100) * 100 + step));
     renderSalaryPicker();
   });
 }
@@ -771,11 +896,14 @@ function updateRandomRange() {
 settings.frequency.addEventListener('change', updateRandomRange);
 settings.randomMin.addEventListener('input', updateRandomRange);
 function loadSettings() {
+  for (const [id, input] of contactOptions) input.checked = receivesEvents(id);
   for (const [id, input] of nameFields) input.value = farm.names?.[id] || "";
   for (const [key, value] of Object.entries(farm.settings)) {
     if (settings[key].type === 'checkbox') settings[key].checked = value;
     else settings[key].value = value;
   }
+  refreshAssignments();
+  for (const [role, , assignment] of contactOptions) assignment.value = assignedContact(role);
   renderSalaryPicker();
   updateRandomRange();
   updateRepairSettings();
@@ -786,9 +914,11 @@ function loadSettings() {
 }
 $('settings').addEventListener('submit', event => {
   event.preventDefault();
+  farm.contactPreferences = Object.fromEntries(contactOptions.map(([id, input]) => [id, input.checked]));
+  farm.roleContacts = Object.fromEntries(contactOptions.map(([role, , assignment]) => [role, assignment.value]));
   farm.names = Object.fromEntries(nameFields.map(([id, input]) => [id, input.value.trim()]));
   farm.settings = {
-    currency: settings.currency.value, repairProvider: settings.repairProvider.value, mechanicSalary: settings.repairProvider.value === 'staff' ? Number(settings.mechanicSalary.value) : farm.settings.mechanicSalary,
+    currency: settings.currency.value, repairProvider: settings.repairProvider.value, delivery: settings.delivery.value, mechanicPayroll: settings.mechanicPayroll.checked, mechanicSalary: settings.mechanicPayroll.checked ? Number(settings.mechanicSalary.value) : farm.settings.mechanicSalary,
     workshop: settings.workshop.checked,
     start: Number(settings.start.value), days: Number(settings.days.value), frequency: settings.frequency.value,
     randomMin: settings.frequency.value === 'random' ? Number(settings.randomMin.value) : farm.settings.randomMin,
@@ -819,10 +949,27 @@ $('settings').addEventListener('submit', event => {
 });
 $('advance').addEventListener('click', () => {
   const starting = !farm.started;
-  if (starting) selectContact('mechanic');
+  if (starting) {
+    const preferred = repairContact();
+    selectContact(receivesEvents(preferred) ? assignedContact(preferred) : 'accountant');
+  }
   nextDay();
   settings.start.disabled = true;
   if (starting || (farm.day === farm.days && farm.contact === 'accountant')) $('chat-title').focus({ preventScroll: true });
+});
+
+$('desktop-advance').addEventListener('click', () => {
+  if (!farm.started || farm.day < farm.days) {
+    $('advance').click();
+    return;
+  }
+  if (!farm.monthClosed) {
+    if (scheduledMessagesRemaining()) return;
+    closeMonth();
+  }
+  nextMonth();
+  save();
+  render();
 });
 
 const entry = $('entry').elements;

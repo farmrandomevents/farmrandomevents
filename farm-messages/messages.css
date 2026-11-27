@@ -172,7 +172,6 @@ h1 { font-size: clamp(1.85rem, 4vw, 2.8rem); }
 }
 .game-note { color: #684916; }
 .composer { background: white; border-top: 1px solid #d7e0d6; padding: .6rem .8rem .75rem; }
-#composer-label { font-size: .75rem; font-weight: 650; color: #4e6257; margin-bottom: .35rem; }
 #replies { min-height: 0; padding: 0; }
 #replies button {
   border: 1px solid #9fbbae;
@@ -413,7 +412,7 @@ main:has(#app:not([hidden])) {
 .settings-footer button { min-height: 44px; }
 #settings-save-error, #starting-month-note { margin: 0; }
 
-.salary-controls { display: flex; gap: .5rem; }
+.salary-controls { display: flex; flex-wrap: wrap; gap: .5rem; }
 .salary-controls button { min-height: 44px; }
 
 .settings-wide { grid-column: 1 / -1; }
@@ -427,7 +426,6 @@ main:has(#app:not([hidden])) {
 .reply-topic { display: grid; gap: .35rem; font-weight: 700; }
 .reply-topic select { color: #fff; }
 
-#composer-label { font-size: 1rem; color: #35413b; }
 #replies { display: flex; flex-direction: column; align-items: stretch; gap: .55rem; }
 #replies button { font-size: 1rem; min-height: 44px; }
 #replies p { font-size: 1rem; line-height: 1.5; }
@@ -438,3 +436,16 @@ main:has(#app:not([hidden])) {
 #conversation-history { margin: .25rem .8rem .8rem; color: #35413b; }
 #conversation-history summary { cursor: pointer; padding-block: .65rem; }
 @media (min-width: 691px) { #replies button, #replies p { font-size: 1.05rem; } }
+
+.header-calendar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem .75rem;
+  font-size: .85rem;
+}
+@media (max-width: 690px) {
+  .messages-top { flex-wrap: wrap; gap: .35rem .75rem; }
+  .header-calendar { order: 1; flex: 1 0 100%; }
+  .header-calendar button { min-height: 44px; }
+}
