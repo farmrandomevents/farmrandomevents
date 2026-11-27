@@ -493,7 +493,7 @@ function renderScenarioReplies(job) {
       'Keep the machine out of use until the repair completion message arrives.');
   };
   if (job.step === 'collect') {
-    reply('I’ve collected the header', () => { job.stage = 'closed'; repairUpdate(job, 'Thanks. The header is back in use.', ''); });
+    reply(`I’ve collected the ${job.item}`, () => { job.stage = 'closed'; });
     return;
   }
   if (job.scenario === 'battery') {
@@ -756,17 +756,17 @@ function renderReplies() {
     actions.append(thread);
     if (messages.length > 1) actions.append(node('small', 'Scroll up for earlier messages', 'repair-thread-hint'));
     const latest = messages.at(-1);
-    const previous = visible.at(-2)?.sent ? messages.at(-2) : null;
+    const recentCount = visible.at(-1).sent ? 2 : visible.at(-2)?.sent ? 3 : 1;
+    const recent = messages.slice(-recentCount);
     const fitLatest = () => {
-      const top = (previous || latest).getBoundingClientRect().top;
+      const top = recent[0].getBoundingClientRect().top;
       thread.style.height = `${latest.getBoundingClientRect().bottom - top}px`;
       thread.scrollTop = thread.scrollHeight;
     };
     fitLatest();
     if (typeof ResizeObserver === 'function') {
       replyThreadObserver = new ResizeObserver(fitLatest);
-      replyThreadObserver.observe(latest);
-      if (previous) replyThreadObserver.observe(previous);
+      recent.forEach(bubble => replyThreadObserver.observe(bubble));
     }
   }
   if (completed || incident.stage === 'repairing' || incident.stage === 'parked') return;
@@ -959,8 +959,11 @@ function renderJobs() {
       detail.append(node('p', update === status ? status : `${update} ${status}`));
       if (!farm.monthClosed && item.scenario && item.stage === 'repairing' &&
           Number.isFinite(item.dueHour) && item.dueHour < (farm.tick + 1) * 24) {
-        const label = item.step === 'dealer-visit' ? 'Get inspection result' : 'Confirm repair ready';
-        detail.append(button(`It’s ${repairTime(item.dueHour)} or later · ${label}`, () => {
+        const label = item.step === 'dealer-visit' ? 'The fitter has arrived' :
+          'I’m putting it back to work';
+        const collecting = item.route === 'drop-off' && item.step !== 'dealer-visit';
+        if (collecting) detail.append(node('p', `Ready to collect from ${repairTime(item.dueHour)}.`));
+        detail.append(button(collecting ? 'I’m on my way to collect it' : `It’s ${repairTime(item.dueHour)} or later · ${label}`, () => {
           advanceRepairClock(item.dueHour);
           $('job-status-' + item.id)?.focus();
         }, 'primary'));
@@ -1055,7 +1058,7 @@ function render() {
   const update = $('next-repair-update');
   const next = nextRepairUpdate();
   update.hidden = !Number.isFinite(next);
-  if (!update.hidden) update.textContent = `Next repair update · ${repairTime(next)}`;
+  if (!update.hidden) update.textContent = `Advance farm clock to ${repairTime(next)}`;
   $('workspace').setAttribute('data-view', messageView);
   $('date').textContent = period();
   $('day').textContent = `Day ${farm.day} of ${farm.days}`;
