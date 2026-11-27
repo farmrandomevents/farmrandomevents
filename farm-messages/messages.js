@@ -25,8 +25,6 @@ const catalogue = [
     text: 'That warning light sounds like a charging fault. Leave the tractor parked for now. Can you drop it at the workshop?' },
   { contact: 'mechanic', type: 'repair', item: 'baler', photo: 'machinery/baler-breakdown.webp', amounts: [400, 500, 600], season: [5, 6, 7, 8],
     text: 'I noticed the baler’s making a noise. Park it up before it takes the bearings with it. I can get it into the workshop.' },
-  { contact: 'mechanic', type: 'service', photo: tractor, amounts: [200, 300], season: [0, 1, 10, 11],
-    text: 'I’ve got space for a routine service in the workshop. Shall I put you down for it?' },
   { contact: 'dealer', type: 'expense', photo: 'dealership/category-7.webp', amounts: [200, 300], reason: 'Replacement parts',
     text: 'I can get a set of filters and belts in with tomorrow’s order. Want me to add a set for your farm?' },
   { contact: 'dealer', type: 'credit', photo: 'dealership/category-7.webp', amounts: [100, 200], reason: 'Parts credit',
@@ -364,6 +362,7 @@ function scheduleDelivery() {
 }
 
 function offer(event) {
+  if (event.type === 'service') return;
   const role = eventContact(event);
   if (!receivesEvents(role)) return;
   const recipient = assignedContact(role);
@@ -523,7 +522,12 @@ function renderReplies() {
     if (latestIncoming) $('replies').append(node('p', latestIncoming.text, 'reply-context'));
     if (farm.day === farm.days && !farm.monthClosed) {
       if (scheduledMessagesRemaining()) {
-        $('replies').append(node('p', 'The monthly accounts will be ready after the remaining scheduled messages arrive.'));
+        $('replies').append(button('Request accounts', () => {
+          if (!confirmMonthClose()) return;
+          closeMonth();
+          save();
+          render();
+        }, 'primary'));
       } else {
         reply(`Can I have ${monthName()}’s accounts?`, closeMonth, 'primary');
       }
@@ -796,6 +800,11 @@ $('message-nav').addEventListener('click', event => {
 $('contact-search').addEventListener('input', renderContacts);
 $('start-chats').addEventListener('click', () => $('advance').click());
 
+function confirmMonthClose() {
+  return !scheduledMessagesRemaining() || window.confirm(
+    'Close this month now? Any new messages still scheduled for this month will be skipped. Existing jobs and follow-ups will carry over.'
+  );
+}
 function scheduledMessagesRemaining() {
   return farm.pendingMessages.length + (farm.queue[0]?.dueAt !== undefined ? farm.queue.length : 0);
 }
@@ -818,9 +827,6 @@ function render() {
   const endOfMonth = farm.started && farm.day === farm.days;
   const waiting = endOfMonth && !farm.monthClosed ? scheduledMessagesRemaining() : 0;
   $('desktop-date').textContent = `${monthName()} · ${$('day').textContent}`;
-  const status = $('scheduled-status');
-  status.hidden = waiting === 0;
-  status.textContent = waiting ? `${waiting} ${waiting === 1 ? 'message is' : 'messages are'} still waiting to arrive` : '';
   desktopAdvance.textContent = waiting ? 'Close month early' :
     endOfMonth ? `${farm.monthClosed ? 'Start' : 'Close month and start'} ${months[(farm.month + 1) % 12]}` :
     !farm.started ? 'Start farm messages' : `Next day`;
@@ -984,9 +990,7 @@ $('desktop-advance').addEventListener('click', () => {
     return;
   }
   if (!farm.monthClosed) {
-    if (scheduledMessagesRemaining() && !window.confirm(
-      'Close this month now? Any new messages still scheduled for this month will be skipped. Existing jobs and follow-ups will carry over.'
-    )) return;
+    if (!confirmMonthClose()) return;
     closeMonth();
   }
   nextMonth();
