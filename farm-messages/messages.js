@@ -21,8 +21,9 @@ const people = {
 };
 const tractor = 'machinery/machinery-workshop.webp';
 const catalogue = [
-  { contact: 'mechanic', type: 'repair', item: 'tractor', photo: tractor, amounts: [300, 400, 500],
-    text: 'That warning light sounds like a charging fault. Leave the tractor parked for now. Can you drop it at the workshop?' },
+  { contact: 'mechanic', type: 'repair', item: 'tractor', scenario: 'battery', photo: tractor },
+  { contact: 'mechanic', type: 'repair', item: 'tractor', scenario: 'tyre', photo: tractor },
+  { contact: 'mechanic', type: 'repair', item: 'combine header', scenario: 'header', photo: tractor },
   { contact: 'mechanic', type: 'repair', item: 'baler', photo: 'machinery/baler-breakdown.webp', amounts: [400, 500, 600], season: [5, 6, 7, 8],
     text: 'I noticed the baler’s making a noise. Park it up before it takes the bearings with it. I can get it into the workshop.' },
   { contact: 'dealer', type: 'expense', photo: 'dealership/category-7.webp', amounts: [200, 300], reason: 'Replacement parts',
@@ -286,9 +287,9 @@ function receivesEvents(contact) {
   return farm.contactPreferences?.[contact] === true;
 }
 function eventContact(event) {
-  return event.type === 'repair' && event.item === 'tractor' ? repairContact() : event.contact;
+  return event.type === 'repair' ? repairContact() : event.contact;
 }
-function planMonth(first = false) {
+function planMonth() {
   const count = monthlyEventCount(farm.settings);
   const pool = catalogue.filter(event => receivesEvents(eventContact(event)) && (!event.livestock || farm.settings.animals) && (!event.sheep || farm.settings.sheep) &&
     !(event.type === 'repair' && farm.incidents.some(incident => incident.type === 'repair' &&
@@ -296,12 +297,9 @@ function planMonth(first = false) {
   const senderOf = event => assignedContact(eventContact(event));
   const scheduled = [];
   const senderCounts = new Map();
-  if (first && pool.includes(catalogue[0])) {
-    scheduled.push(catalogue[0]);
-    senderCounts.set(senderOf(catalogue[0]), 1);
-  }
   while (scheduled.length < count) {
-    const available = pool.filter(event => !scheduled.includes(event));
+    const available = pool.filter(event => !scheduled.includes(event) &&
+      !(event.type === 'repair' && scheduled.some(item => item.type === 'repair' && item.item === event.item)));
     if (!available.length) break;
     const senders = [...new Set(available.map(senderOf))];
     const fewest = Math.min(...senders.map(sender => senderCounts.get(sender) || 0));
@@ -367,6 +365,23 @@ function offer(event, deliver = automaticMessage) {
   if (!receivesEvents(role)) return;
   const recipient = assignedContact(role);
   if (event.type === 'note' && event.text === 'I found the spare gate pin in the workshop. I’ve left it on the bench.') return;
+  if (event.scenario) {
+    const staff = role === 'mechanic';
+    const job = { ...event, id: nextId(), contact: recipient, stage: 'offer', step: 'start',
+      route: staff ? 'farm' : 'call-out' };
+    farm.incidents.push(job);
+    const words = {
+      battery: staff
+        ? `The battery’s dead. Leave the tractor exactly where it is. Shall I order a replacement for ${money(20000)}?`
+        : `The battery’s dead. Leave the tractor where it is. Shall I send a fitter with a new battery for ${money(40000)} including the visit?`,
+      tyre: `That tyre’s losing air slowly. Can you bring the tractor back to the ${staff && farm.settings.workshop ? 'farm workshop' : 'yard'} and let me know when it’s parked?`,
+      header: staff
+        ? `I’ve checked the header. There’s a fault in the drive and it needs a dealer fitter. You can take it to the dealership or I can book a visit for ${money(10000)} extra.`
+        : `We need to inspect the header drive. You can bring it in or I can send a fitter for ${money(10000)} extra.`,
+    };
+    repairUpdate(job, words[job.scenario], undefined, deliver);
+    return;
+  }
   const amount = choose(event.amounts || [0]) * 100;
   const info = { photo: event.photo, guidance: event.guidance };
   const source = contactName(recipient);
@@ -396,7 +411,113 @@ function offer(event, deliver = automaticMessage) {
   incident.replyContext = event.text + quote;
   deliver(recipient, incident.replyContext, info);
 }
+const repairGuidance = {
+  battery: 'Leave the tractor exactly where it stopped. Use another machine until the repair is complete.',
+  tyre: 'Move the tractor to the farmyard or workshop before confirming. Keep it out of use until it is fixed.',
+  header: 'Keep the header out of use until the dealer confirms it is repaired.',
+};
+
+function repairUpdate(job, text, guidance = repairGuidance[job.scenario], deliver = message) {
+  job.replyContext = text;
+  job.guidance = guidance;
+  deliver(job.contact, text, { guidance });
+}
+
+function repairTime(hour) {
+  return new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hour12: true, timeZone: 'UTC' })
+    .format(new Date(Date.UTC(2000, 0, 1, hour)));
+}
+
+function repairDue(hours) {
+  const hour = (farm.hour ?? 8) + hours;
+  return farm.tick * 24 + Math.min(hour, 23);
+}
+
+function scheduleRepairStep(job, step, due) {
+  job.stage = 'repairing';
+  job.step = step;
+  job.dueHour = due;
+}
+
+function finishRepairStep(job) {
+  delete job.dueHour;
+  if (job.step === 'dealer-visit') {
+    job.stage = 'offer';
+    job.step = 'quote';
+    repairUpdate(job, `I’ve checked the header. The drive needs a replacement part. The repair is ${money(60000)} for parts and labour, separate from the visit. Shall I go ahead?`);
+    return;
+  }
+  job.stage = job.route === 'drop-off' ? 'offer' : 'closed';
+  job.step = 'collect';
+  addEntry(contactName(job.contact), job.route === 'farm' ? `${job.item} repair parts` : `${job.item} repair`, job.amount);
+  repairUpdate(job, job.route === 'drop-off'
+    ? 'All fixed. You can collect the header from the dealership.'
+    : 'All fixed. You can use the machine again.', '');
+}
+
+function renderScenarioReplies(job) {
+  const staff = job.route === 'farm';
+  const park = () => {
+    job.stage = 'parked';
+    repairUpdate(job, 'Leave it out of use for now. I’ll check back next month.');
+  };
+  const approve = (amount, hours) => {
+    job.amount = amount;
+    const due = repairDue(hours);
+    scheduleRepairStep(job, 'finish', due);
+    repairUpdate(job, `I’ll get the part and fit it. It should be ready by ${repairTime(due)}.`,
+      'Keep the machine out of use until the repair completion message arrives.');
+  };
+  if (job.step === 'collect') {
+    reply('I’ve collected the header', () => { job.stage = 'closed'; repairUpdate(job, 'Thanks. The header is back in use.', ''); });
+    return;
+  }
+  if (job.scenario === 'battery') {
+    const amount = staff ? 20000 : 40000;
+    const hours = farm.days === 1 ? 4 : 6;
+    const option = staff ? 'Order the battery' : 'Book the call-out';
+    reply(`${option} · ${money(amount)} · ready by ${repairTime(repairDue(hours))}`,
+      () => approve(amount, hours), 'primary');
+  } else if (job.scenario === 'tyre' && job.step === 'start') {
+    reply(farm.settings.workshop && staff ? 'It’s at the farm workshop' : 'It’s parked in the yard', () => {
+      job.step = 'quote';
+      const amount = staff ? 20000 : 40000;
+      repairUpdate(job, `It needs a new tyre. I can get it fitted by ${repairTime(repairDue(2))} for ${money(amount)}${staff ? ' for the tyre' : ', including the call-out'}. Shall I go ahead?`);
+    }, 'primary');
+  } else if (job.scenario === 'header' && job.step === 'start') {
+    const book = route => {
+      job.route = route;
+      job.contact = assignedContact('dealer');
+      job.step = 'ready';
+      repairUpdate(job, route === 'drop-off'
+        ? 'Bring the header to the dealership and let me know when it’s dropped off.'
+        : 'Leave the header in the yard and let me know when it’s ready for the fitter.',
+        route === 'drop-off' ? 'Use a header trailer to take the header to the dealership.' : 'Park the header in the farmyard.');
+    };
+    reply('Take it to the dealership', () => book('drop-off'), 'primary');
+    reply(`Book a dealer visit · ${money(10000)}`, () => book('call-out'));
+  } else if (job.step === 'ready') {
+    reply(job.route === 'drop-off' ? 'I’ve dropped it off' : 'It’s ready for the fitter', () => {
+      if (job.route === 'call-out' && !job.visitCharged) {
+        addEntry(contactName(job.contact), 'Header call-out and inspection', 10000);
+        job.visitCharged = true;
+      }
+      const due = repairDue(farm.days === 1 ? 3 : 5);
+      scheduleRepairStep(job, 'dealer-visit', due);
+      repairUpdate(job, `I’ll inspect it and get back to you by ${repairTime(due)}.`);
+    }, 'primary');
+  } else {
+    const amount = job.scenario === 'header' ? 60000 : staff ? 20000 : 40000;
+    reply(`Approve repair · ${money(amount)}`, () => approve(amount, job.scenario === 'header' ? 4 : 2), 'primary');
+  }
+  reply('Leave it for now', park);
+}
+
 function runDay() {
+  farm.hour = 8;
+  for (const job of farm.incidents) {
+    if (job.scenario && job.stage === 'repairing' && job.dueHour <= repairDue(0)) finishRepairStep(job);
+  }
   for (const incident of farm.incidents) {
     if (incident.stage === 'deferred' && farm.tick >= incident.due) {
       incident.stage = 'offer';
@@ -417,17 +538,17 @@ function runDay() {
   farm.queue = farm.queue.filter(item => item.day !== farm.day);
   importRewards();
 }
-function beginMonth(first = false) {
+function beginMonth() {
   farm.started = true;
   farm.days = farm.settings.days;
   farm.day = 1;
   farm.monthClosed = false;
-  planMonth(first);
+  planMonth();
   runDay();
 }
 function nextDay() {
   if (!farm.started) {
-    beginMonth(true);
+    beginMonth();
   } else if (farm.day < farm.days) {
     farm.day++;
     farm.tick++;
@@ -442,6 +563,13 @@ function remindAboutParkedRepairs() {
   for (const incident of farm.incidents) {
     if (incident.type !== 'repair' || incident.stage !== 'parked') continue;
     incident.stage = 'offer';
+    if (incident.scenario) {
+      const prompt = incident.scenario === 'tyre' && incident.step === 'start'
+        ? 'Have you managed to get the tractor back to the yard yet? Let me know when it’s parked.'
+        : `The ${incident.item} still needs attention. Can we go ahead this month?`;
+      repairUpdate(incident, prompt, undefined, farm.settings.delivery === 'day' ? message : automaticMessage);
+      continue;
+    }
     incident.replyContext = `The ${incident.item} is still out of use. Keep it parked until it’s fixed. Shall we arrange the repair this month?`;
     automaticMessage(incident.contact, incident.replyContext);
   }
@@ -508,6 +636,7 @@ function pendingReplies(contact) {
     ['offer', 'drop-off'].includes(incident.stage));
 }
 function replyTopic(incident) {
+  if (incident.scenario) return { battery: 'Dead battery', tyre: 'Slow puncture', header: 'Combine header fault' }[incident.scenario];
   if (incident.type === 'repair') return incident.item + ' repair';
   return incident.reason || 'Routine service';
 }
@@ -592,6 +721,11 @@ function renderReplies() {
     }
   } else {
     $('replies').append(node('p', replyTopic(incident), 'reply-topic'), actions);
+  }
+  if (incident.scenario) {
+    if (incident.guidance && farm.settings.guidance) actions.append(node('p', incident.guidance, 'game-note'));
+    renderScenarioReplies(incident);
+    return;
   }
   if (incident.type === 'repair' && incident.parking) {
     if (incident.stage === 'drop-off') {
@@ -747,7 +881,10 @@ function renderJobs() {
   const jobs = farm.incidents.filter(item => item.type === 'repair' && item.stage !== 'closed');
   $('no-jobs').hidden = jobs.length > 0;
   $('restrictions').replaceChildren(...jobs.map(item => {
-    const status = item.stage === 'repairing' ? 'Repair in progress' :
+    const status = item.stage === 'repairing' ? (item.scenario
+      ? `${item.step === 'dealer-visit' ? 'Inspection booked' : 'Repair in progress'} · ${item.dueHour < (farm.tick + 1) * 24 ? repairTime(item.dueHour) : 'next farm day'}`
+      : 'Repair in progress') :
+      item.scenario && item.step === 'collect' ? 'Ready to collect' :
       item.stage === 'parked' ? 'Out of use · Follow-up next month' :
       farm.monthClosed ? 'Replies reopen next month' :
       item.stage === 'drop-off' ? 'Waiting for you to park the machine' : 'Waiting for your reply';
@@ -809,6 +946,21 @@ function scheduledMessagesRemaining() {
   return farm.pendingMessages.length + (farm.queue[0]?.dueAt !== undefined ? farm.queue.length : 0);
 }
 
+function nextRepairUpdate() {
+  if (farm.monthClosed) return Infinity;
+  return Math.min(...farm.incidents.filter(job => job.scenario && job.stage === 'repairing' &&
+    job.dueHour < (farm.tick + 1) * 24).map(job => job.dueHour));
+}
+$('next-repair-update').addEventListener('click', () => {
+  const due = nextRepairUpdate();
+  if (!Number.isFinite(due)) return;
+  farm.hour = Math.max(farm.hour ?? 8, due % 24);
+  for (const job of farm.incidents) {
+    if (job.scenario && job.stage === 'repairing' && job.dueHour <= repairDue(0)) finishRepairStep(job);
+  }
+  save();
+  render();
+});
 function render() {
   scheduleDelivery();
   renderSound();
@@ -818,6 +970,10 @@ function render() {
   $('start-chats').hidden = farm.started;
   $('setup-farm').hidden = farm.started;
   renderJobs();
+  const update = $('next-repair-update');
+  const next = nextRepairUpdate();
+  update.hidden = !Number.isFinite(next);
+  if (!update.hidden) update.textContent = `Next repair update · ${repairTime(next)}`;
   $('workspace').setAttribute('data-view', messageView);
   $('date').textContent = period();
   $('day').textContent = `Day ${farm.day} of ${farm.days}`;
