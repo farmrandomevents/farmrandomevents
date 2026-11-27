@@ -361,7 +361,7 @@ function scheduleDelivery() {
   }, Math.max(0, dueAt - Date.now()));
 }
 
-function offer(event) {
+function offer(event, deliver = automaticMessage) {
   if (event.type === 'service') return;
   const role = eventContact(event);
   if (!receivesEvents(role)) return;
@@ -372,11 +372,11 @@ function offer(event) {
   const source = contactName(recipient);
   if (event.type === 'income' || event.type === 'credit') {
     addEntry(source, event.reason, amount, event.type);
-    automaticMessage(recipient, `${event.text} ${money(amount)}.`, info);
+    deliver(recipient, `${event.text} ${money(amount)}.`, info);
     return;
   }
   if (event.type === 'note') {
-    automaticMessage(recipient, event.text, info);
+    deliver(recipient, event.text, info);
     return;
   }
   const incident = { ...event, contact: recipient, id: nextId(), amount, stage: 'offer' };
@@ -389,12 +389,12 @@ function offer(event) {
       ? `I can fix it here. The parts will be ${money(10000)}.`
       : `Workshop drop-off is ${money(30000)}, or we can come to you for ${money(40000)}.`;
     incident.replyContext = `There’s a fault on your smallest tractor. ${quote}`;
-    automaticMessage(incident.contact, incident.replyContext, info);
+    deliver(incident.contact, incident.replyContext, info);
     return;
   }
   const quote = amount ? ` It’ll be ${money(amount)}.` : '';
   incident.replyContext = event.text + quote;
-  automaticMessage(recipient, incident.replyContext, info);
+  deliver(recipient, incident.replyContext, info);
 }
 function runDay() {
   for (const incident of farm.incidents) {
@@ -413,7 +413,7 @@ function runDay() {
       }
     }
   }
-  for (const item of farm.queue.filter(item => item.day === farm.day)) offer(item.event);
+  for (const item of farm.queue.filter(item => item.day === farm.day)) offer(item.event, message);
   farm.queue = farm.queue.filter(item => item.day !== farm.day);
   importRewards();
 }
@@ -825,11 +825,9 @@ function render() {
     farm.day < farm.days ? `Advance to Day ${farm.day + 1}` : 'Open accountant chat';
   const desktopAdvance = $('desktop-advance');
   const endOfMonth = farm.started && farm.day === farm.days;
-  const waiting = endOfMonth && !farm.monthClosed ? scheduledMessagesRemaining() : 0;
   $('desktop-date').textContent = `${monthName()} · ${$('day').textContent}`;
-  desktopAdvance.textContent = waiting ? 'Close month early' :
-    endOfMonth ? `${farm.monthClosed ? 'Start' : 'Close month and start'} ${months[(farm.month + 1) % 12]}` :
-    !farm.started ? 'Start farm messages' : `Next day`;
+  desktopAdvance.textContent = endOfMonth ? 'Open accountant chat' :
+    !farm.started ? 'Start farm messages' : 'Next day';
   renderContacts();
   renderChat();
   renderAccounts();
@@ -984,19 +982,7 @@ $('advance').addEventListener('click', () => {
   if (starting || (farm.day === farm.days && farm.contact === 'accountant')) $('chat-title').focus({ preventScroll: true });
 });
 
-$('desktop-advance').addEventListener('click', () => {
-  if (!farm.started || farm.day < farm.days) {
-    $('advance').click();
-    return;
-  }
-  if (!farm.monthClosed) {
-    if (!confirmMonthClose()) return;
-    closeMonth();
-  }
-  nextMonth();
-  save();
-  render();
-});
+$('desktop-advance').addEventListener('click', () => $('advance').click());
 
 const entry = $('entry').elements;
 function entryFields() {
