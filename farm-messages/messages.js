@@ -453,10 +453,14 @@ function repairDue(hours) {
   return farm.tick * 24 + Math.min(hour, 23);
 }
 
-function scheduleRepairStep(job, step, due) {
+function repairWait(hours) {
+  return `${({2: 'two', 3: 'three', 4: 'four', 5: 'five', 6: 'six'})[hours] || hours} hours`;
+}
+function scheduleRepairStep(job, step, hours) {
   job.stage = 'repairing';
   job.step = step;
-  job.dueHour = due;
+  job.waitHours = hours;
+  job.dueHour = repairDue(hours);
 }
 
 function finishRepairStep(job) {
@@ -487,9 +491,8 @@ function renderScenarioReplies(job) {
   };
   const approve = (amount, hours) => {
     job.amount = amount;
-    const due = repairDue(hours);
-    scheduleRepairStep(job, 'finish', due);
-    repairUpdate(job, `I’ll get the part and fit it. It should be ready by ${repairTime(due)}.`,
+    scheduleRepairStep(job, 'finish', hours);
+    repairUpdate(job, `I’ll get the part and fit it. It should be ready in ${repairWait(hours)}.`,
       'Keep the machine out of use until the repair completion message arrives.');
   };
   if (job.step === 'collect') {
@@ -500,13 +503,13 @@ function renderScenarioReplies(job) {
     const amount = staff ? 20000 : 40000;
     const hours = farm.days === 1 ? 4 : 6;
     const option = staff ? 'Order the battery' : 'Book the call-out';
-    reply(`${option} · ${money(amount)} · ready by ${repairTime(repairDue(hours))}`,
+    reply(`${option} · ${money(amount)} · ready in ${repairWait(hours)}`,
       () => approve(amount, hours), 'primary');
   } else if (job.scenario === 'tyre' && job.step === 'start') {
     reply(farm.settings.workshop && staff ? 'It’s at the farm workshop' : 'It’s parked in the yard', () => {
       job.step = 'quote';
       const amount = staff ? 20000 : 40000;
-      repairUpdate(job, `It needs a new tyre. I can get it fitted by ${repairTime(repairDue(2))} for ${money(amount)}${staff ? ' for the tyre' : ', including the call-out'}. Shall I go ahead?`);
+      repairUpdate(job, `It needs a new tyre. I can get it fitted in two hours for ${money(amount)}${staff ? ' for the tyre' : ', including the call-out'}. Shall I go ahead?`);
     }, 'primary');
   } else if (job.scenario === 'header' && job.step === 'start') {
     const book = route => {
@@ -526,9 +529,9 @@ function renderScenarioReplies(job) {
         addEntry(contactName(job.contact), 'Header call-out and inspection', 10000);
         job.visitCharged = true;
       }
-      const due = repairDue(farm.days === 1 ? 3 : 5);
-      scheduleRepairStep(job, 'dealer-visit', due);
-      repairUpdate(job, `I’ll inspect it and get back to you by ${repairTime(due)}.`);
+      const hours = farm.days === 1 ? 3 : 5;
+      scheduleRepairStep(job, 'dealer-visit', hours);
+      repairUpdate(job, `I’ll inspect it and get back to you in ${repairWait(hours)}.`);
     }, 'primary');
   } else {
     const amount = job.scenario === 'header' ? 60000 : staff ? 20000 : 40000;
@@ -790,10 +793,9 @@ function renderReplies() {
   }
   if (!farm.monthClosed && incident.scenario && incident.stage === 'repairing' &&
       Number.isFinite(incident.dueHour) && incident.dueHour < (farm.tick + 1) * 24) {
-    const time = repairTime(incident.dueHour);
+    const wait = incident.waitHours ? repairWait(incident.waitHours) : null;
     const collecting = incident.route === 'drop-off' && incident.step !== 'dealer-visit';
-    if (collecting) actions.append(node('p', `Ready to collect from ${time}.`));
-    actions.append(button(collecting ? 'I’m on my way to collect it' : `It’s gone ${time}. I’ll check for an update.`, () => {
+    actions.append(button(collecting ? 'I’m on my way to collect it' : ` ${wait ? wait[0].toUpperCase() + wait.slice(1) + ' have passed.' : 'The wait is over.'} I’ll check for an update.`.trimStart(), () => {
       advanceRepairClock(incident.dueHour);
       $('chat-title').focus({ preventScroll: true });
     }, 'primary'));
@@ -964,7 +966,7 @@ function renderJobs() {
   $('no-jobs').hidden = jobs.length > 0;
   $('restrictions').replaceChildren(...jobs.map(item => {
     const status = item.stage === 'closed' ? '✓ Completed' : item.stage === 'repairing' ? (item.scenario
-      ? `${item.step === 'dealer-visit' ? 'Inspection booked' : 'Repair in progress'} · ${item.dueHour < (farm.tick + 1) * 24 ? repairTime(item.dueHour) : 'next farm day'}`
+      ? `${item.step === 'dealer-visit' ? 'Inspection booked' : 'Repair in progress'} · ${item.dueHour < (farm.tick + 1) * 24 ? (item.waitHours ? `allow ${repairWait(item.waitHours)}` : repairTime(item.dueHour)) : 'next farm day'}`
       : 'Repair in progress') :
       item.scenario && item.step === 'collect' ? 'Ready to collect' :
       item.stage === 'parked' ? 'Out of use · Follow-up next month' :
