@@ -462,3 +462,15 @@ main:has(#app:not([hidden])) {
   color: #263729;
 }
 #replies .job-reply { background: #dce7dc; }
+
+.repair-thread {
+  flex: 1 0 100%;
+  min-width: 0;
+  max-height: 9rem;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+}
+#replies .repair-thread .reply-context { margin: 0; box-sizing: border-box; }
+#replies .repair-thread .reply-context + .reply-context { margin-top: .35rem; }
+.repair-thread-hint { flex-basis: 100%; }

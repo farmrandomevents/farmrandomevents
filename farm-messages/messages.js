@@ -84,6 +84,7 @@ const assignedContact = role => farm.roleContacts?.[role] || role;
 const contactName = id => farm.names?.[id]?.trim() || people[id][0];
 let messageView = 'inbox';
 let selectedJobId;
+let expandedJobStatus;
 let replyingTo;
 let audio;
 let chimeEndsAt = 0;
@@ -218,6 +219,7 @@ function reply(label, action, className) {
       action();
       if (job?.stage === 'closed') {
         job.closedMonth = monthId();
+        selectedJobId = null;
         job.closeLabel = label === 'No thanks' ? 'Declined' : 'Completed';
       }
     } finally {
@@ -463,7 +465,10 @@ function finishRepairStep(job) {
   }
   job.stage = job.route === 'drop-off' ? 'offer' : 'closed';
   job.step = 'collect';
-  if (job.stage === 'closed') job.closedMonth = monthId();
+  if (job.stage === 'closed') {
+    job.closedMonth = monthId();
+    if (selectedJobId === job.id) selectedJobId = null;
+  }
   addEntry(contactName(job.contact), job.route === 'farm' ? `${job.item} repair parts` : `${job.item} repair`, job.amount);
   repairUpdate(job, job.route === 'drop-off'
     ? 'All fixed. You can collect the header from the dealership.'
@@ -545,6 +550,7 @@ function runDay() {
       } else {
         incident.stage = 'closed';
         incident.closedMonth = monthId();
+        if (selectedJobId === incident.id) selectedJobId = null;
         addEntry(contactName(incident.contact), `${incident.item} repair`, incident.amount);
         automaticMessage(incident.contact, `The ${incident.item} is fixed and ready to collect. You can use it again. I’ve sent the invoice to ${contactName('accountant')}.`, { jobId: incident.id });
       }
@@ -652,7 +658,9 @@ function replyTopic(incident) {
   if (incident.type === 'repair') return incident.item + ' repair';
   return incident.reason || 'Routine service';
 }
+let replyThreadObserver;
 function renderReplies() {
+  replyThreadObserver?.disconnect();
   $('replies').replaceChildren();
   const latestIncoming = farm.messages.findLast(item => item.contact === farm.contact && !item.sent);
   if (!farm.started) {
@@ -694,25 +702,25 @@ function renderReplies() {
       (item.type === 'repair' && item.stage !== 'closed') ||
       (item.stage === 'closed' && item.closedMonth === monthId())));
   const incident = items.find(item => item.id === selectedJobId) ||
-    items.find(item => item.stage !== 'closed') || items.at(-1);
-  if (!incident) {
+    (selectedJobId === null ? undefined : items.find(item => item.stage !== 'closed'));
+  if (!items.length) {
     if (latestIncoming) $('replies').append(node('p', latestIncoming.text, 'reply-context'));
     $('replies').append(node('p', 'No reply needed right now.'));
     return;
   }
-  selectedJobId = incident.id;
-  const contact = incident.contact;
+  if (incident) selectedJobId = incident.id;
+  const contact = incident?.contact;
   const leaveParked = () => {
     incident.stage = 'parked';
     message(contact, `Keep the ${incident.item} parked. I’ll check in next month.`);
   };
   const actions = node('div', undefined, 'reply-actions');
   actions.id = 'reply-actions';
-  const completed = incident.stage === 'closed';
+  const completed = incident?.stage === 'closed';
   for (const item of items) {
     const label = item.stage === 'closed' ? `✓ ${replyTopic(item)} · ${item.closeLabel || 'Completed'}` : replyTopic(item);
     const heading = button(label, () => {
-      selectedJobId = item.id;
+      selectedJobId = item === incident ? null : item.id;
       renderReplies();
       $('reply-request-' + item.id).focus({ preventScroll: true });
     }, item.stage === 'closed' ? 'reply-request completed-request' : 'reply-request');
@@ -724,13 +732,31 @@ function renderReplies() {
       $('replies').append(actions);
     }
   }
-  const thread = farm.messages.filter(entry => entry.jobId === incident.id);
-  const visible = completed ? thread.slice(-1) : thread;
-  for (const entry of visible) {
-    actions.append(node('p', entry.sent ? `You: ${entry.text}` : entry.text, entry.sent ? 'reply-context job-reply' : 'reply-context'));
+  if (!incident) return;
+  const visible = farm.messages.filter(entry => entry.jobId === incident.id);
+  const currentText = incident.replyContext || incident.text;
+  if (currentText && (!visible.length || (!completed && visible.at(-1)?.text !== currentText))) {
+    visible.push({ text: currentText });
   }
-  if (!visible.length || (!completed && thread.at(-1)?.text !== incident.replyContext)) {
-    actions.append(node('p', incident.replyContext || incident.text, 'reply-context'));
+  if (visible.length) {
+    const thread = node('div', undefined, 'repair-thread');
+    thread.setAttribute('aria-label', 'Repair messages');
+    thread.tabIndex = 0;
+    const messages = visible.map(entry =>
+      node('p', entry.sent ? `You: ${entry.text}` : entry.text, entry.sent ? 'reply-context job-reply' : 'reply-context'));
+    thread.append(...messages);
+    actions.append(thread);
+    if (messages.length > 1) actions.append(node('small', 'Scroll up for earlier messages', 'repair-thread-hint'));
+    const latest = messages.at(-1);
+    const fitLatest = () => {
+      thread.style.height = `${latest.getBoundingClientRect().height}px`;
+      thread.scrollTop = thread.scrollHeight;
+    };
+    fitLatest();
+    if (typeof ResizeObserver === 'function') {
+      replyThreadObserver = new ResizeObserver(fitLatest);
+      replyThreadObserver.observe(latest);
+    }
   }
   if (completed || incident.stage === 'repairing' || incident.stage === 'parked') return;
   if (farm.monthClosed) {
@@ -903,12 +929,31 @@ function renderJobs() {
       item.stage === 'parked' ? 'Out of use · Follow-up next month' :
       farm.monthClosed ? 'Replies reopen next month' :
       item.stage === 'drop-off' ? 'Waiting for you to park the machine' : 'Waiting for your reply';
-    return button(`${item.item} · ${status}`, () => {
-      selectContact(item.contact, item.id);
-      save();
-      render();
-      (document.querySelector('#replies button') || $('chat-title')).focus();
+    const row = node('div');
+    const expanded = expandedJobStatus === item.id;
+    const heading = button(`${replyTopic(item)} · ${status}`, () => {
+      expandedJobStatus = expanded ? undefined : item.id;
+      renderJobs();
+      $('job-status-' + item.id).focus();
     }, item.stage === 'closed' ? 'job-link completed-request' : 'job-link');
+    heading.id = 'job-status-' + item.id;
+    heading.setAttribute('aria-expanded', String(expanded));
+    row.append(heading);
+    if (expanded) {
+      const detail = node('div', undefined, 'job-status-detail');
+      const update = item.stage === 'repairing'
+        ? (item.step === 'dealer-visit' ? 'Still waiting for the inspection.' : 'The repair is still in progress.')
+        : status;
+      detail.append(node('p', update === status ? status : `${update} ${status}`));
+      detail.append(button('Open conversation', () => {
+        selectContact(item.contact, item.id);
+        save();
+        render();
+        $('chat-title').focus();
+      }));
+      row.append(detail);
+    }
+    return row;
   }));
 }
 function renderAccounts() {
@@ -1274,6 +1319,7 @@ $('reset-dialog').addEventListener('close', () => {
   $('farm-tools').close();
   farm = fresh();
   selectedJobId = undefined;
+  expandedJobStatus = undefined;
   clearTimeout(toastTimer);
   $('toast-region').replaceChildren();
   messageView = 'inbox';
