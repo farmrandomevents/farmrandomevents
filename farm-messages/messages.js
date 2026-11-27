@@ -739,15 +739,19 @@ function renderReplies() {
   if (!incident) return;
   const visible = farm.messages.filter(entry => entry.jobId === incident.id);
   const currentText = incident.replyContext || incident.text;
-  if (currentText && (!visible.length || (!completed && visible.at(-1)?.text !== currentText))) {
-    visible.push({ text: currentText });
+  if (currentText && !visible.length) {
+    visible.push({ contact: incident.contact, text: currentText });
   }
   if (visible.length) {
     const thread = node('div', undefined, 'repair-thread');
     thread.setAttribute('aria-label', 'Repair messages');
     thread.tabIndex = 0;
-    const messages = visible.map(entry =>
-      node('p', entry.sent ? `You: ${entry.text}` : entry.text, entry.sent ? 'reply-context job-reply' : 'reply-context'));
+    const messages = visible.map(entry => {
+      const bubble = node('p', undefined, entry.sent ? 'reply-context job-reply' : 'reply-context');
+      const sender = entry.sent ? 'You' : contactName(entry.contact || incident.contact);
+      bubble.append(node('strong', sender), node('span', ` · ${entry.text}`));
+      return bubble;
+    });
     thread.append(...messages);
     actions.append(thread);
     if (messages.length > 1) actions.append(node('small', 'Scroll up for earlier messages', 'repair-thread-hint'));
@@ -801,14 +805,15 @@ function renderReplies() {
       incident.stage = 'repairing';
       incident.due = farm.tick + 2;
       incident.delay = Math.random() < .3;
-      message(contact, 'Got it in the yard. Should take two days. I’ll text when it’s ready.');
+      incident.replyContext = `Thanks for dropping off the ${incident.item}. I’ll start the repair now. It should take two days. I’ll let you know when it’s ready to collect.`;
+      message(contact, incident.replyContext);
     }, 'primary');
     return;
   }
   if (incident.type === 'repair') {
     reply('I’ll bring it over', () => {
       incident.stage = 'drop-off';
-      incident.replyContext = 'Sounds good. Text me when it’s in the workshop yard.';
+      incident.replyContext = `I’ll keep an eye out for the ${incident.item}. Let me know once you’ve dropped it off at the workshop.`;
       message(contact, incident.replyContext, {
         guidance: `Move the ${incident.item} to your chosen workshop and leave it out of use until ${contactName(incident.contact)} texts you.`,
       });
