@@ -756,14 +756,17 @@ function renderReplies() {
     actions.append(thread);
     if (messages.length > 1) actions.append(node('small', 'Scroll up for earlier messages', 'repair-thread-hint'));
     const latest = messages.at(-1);
+    const previous = visible.at(-2)?.sent ? messages.at(-2) : null;
     const fitLatest = () => {
-      thread.style.height = `${latest.getBoundingClientRect().height}px`;
+      const top = (previous || latest).getBoundingClientRect().top;
+      thread.style.height = `${latest.getBoundingClientRect().bottom - top}px`;
       thread.scrollTop = thread.scrollHeight;
     };
     fitLatest();
     if (typeof ResizeObserver === 'function') {
       replyThreadObserver = new ResizeObserver(fitLatest);
       replyThreadObserver.observe(latest);
+      if (previous) replyThreadObserver.observe(previous);
     }
   }
   if (completed || incident.stage === 'repairing' || incident.stage === 'parked') return;
@@ -954,6 +957,14 @@ function renderJobs() {
         ? (item.step === 'dealer-visit' ? 'Still waiting for the inspection.' : 'The repair is still in progress.')
         : status;
       detail.append(node('p', update === status ? status : `${update} ${status}`));
+      if (!farm.monthClosed && item.scenario && item.stage === 'repairing' &&
+          Number.isFinite(item.dueHour) && item.dueHour < (farm.tick + 1) * 24) {
+        const label = item.step === 'dealer-visit' ? 'Get inspection result' : 'Confirm repair ready';
+        detail.append(button(`It’s ${repairTime(item.dueHour)} or later · ${label}`, () => {
+          advanceRepairClock(item.dueHour);
+          $('job-status-' + item.id)?.focus();
+        }, 'primary'));
+      }
       detail.append(button('Open conversation', () => {
         selectContact(item.contact, item.id);
         save();
@@ -1020,16 +1031,16 @@ function nextRepairUpdate() {
   return Math.min(...farm.incidents.filter(job => job.scenario && job.stage === 'repairing' &&
     job.dueHour < (farm.tick + 1) * 24).map(job => job.dueHour));
 }
-$('next-repair-update').addEventListener('click', () => {
-  const due = nextRepairUpdate();
-  if (!Number.isFinite(due)) return;
+function advanceRepairClock(due) {
+  if (farm.monthClosed || !Number.isFinite(due) || due >= (farm.tick + 1) * 24) return;
   farm.hour = Math.max(farm.hour ?? 8, due % 24);
   for (const job of farm.incidents) {
     if (job.scenario && job.stage === 'repairing' && job.dueHour <= repairDue(0)) finishRepairStep(job);
   }
   save();
   render();
-});
+}
+$('next-repair-update').addEventListener('click', () => advanceRepairClock(nextRepairUpdate()));
 function render() {
   scheduleDelivery();
   renderSound();
