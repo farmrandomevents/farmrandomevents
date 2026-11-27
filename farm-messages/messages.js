@@ -562,6 +562,11 @@ function runDay() {
   }
   for (const item of farm.queue.filter(item => item.day === farm.day)) offer(item.event, message);
   farm.queue = farm.queue.filter(item => item.day !== farm.day);
+  for (const job of farm.incidents) {
+    if (job.scenario && job.stage === 'offer' && job.step === 'collect') {
+      repairUpdate(job, `Just a reminder, the ${job.item} is still ready to collect from the dealership.`, '');
+    }
+  }
   importRewards();
 }
 function beginMonth() {
@@ -572,7 +577,19 @@ function beginMonth() {
   planMonth();
   runDay();
 }
+function unacknowledgedBattery() {
+  return farm.incidents.find(job => job.scenario === 'battery' && job.stage === 'offer');
+}
+function openBlockingRepair() {
+  const job = unacknowledgedBattery();
+  if (!job) return false;
+  selectContact(job.contact, job.id);
+  save();
+  render();
+  return true;
+}
 function nextDay() {
+  if (farm.started && openBlockingRepair()) return;
   if (!farm.started) {
     beginMonth();
   } else if (farm.day < farm.days) {
@@ -673,7 +690,9 @@ function renderReplies() {
   }
   if (farm.contact === 'accountant') {
     if (latestIncoming) $('replies').append(node('p', latestIncoming.text, 'reply-context'));
-    if (farm.day === farm.days && !farm.monthClosed) {
+    if (farm.day === farm.days && !farm.monthClosed && unacknowledgedBattery()) {
+      $('replies').append(button('Reply to the dead battery message first', openBlockingRepair, 'primary'));
+    } else if (farm.day === farm.days && !farm.monthClosed) {
       if (scheduledMessagesRemaining()) {
         $('replies').append(button('Request accounts', () => {
           if (!confirmMonthClose()) return;
@@ -768,6 +787,16 @@ function renderReplies() {
       replyThreadObserver = new ResizeObserver(fitLatest);
       recent.forEach(bubble => replyThreadObserver.observe(bubble));
     }
+  }
+  if (!farm.monthClosed && incident.scenario && incident.stage === 'repairing' &&
+      Number.isFinite(incident.dueHour) && incident.dueHour < (farm.tick + 1) * 24) {
+    const time = repairTime(incident.dueHour);
+    const collecting = incident.route === 'drop-off' && incident.step !== 'dealer-visit';
+    if (collecting) actions.append(node('p', `Ready to collect from ${time}.`));
+    actions.append(button(collecting ? 'I’m on my way to collect it' : `It’s gone ${time}. I’ll check for an update.`, () => {
+      advanceRepairClock(incident.dueHour);
+      $('chat-title').focus({ preventScroll: true });
+    }, 'primary'));
   }
   if (completed || incident.stage === 'repairing' || incident.stage === 'parked') return;
   if (farm.monthClosed) {
@@ -957,17 +986,6 @@ function renderJobs() {
         ? (item.step === 'dealer-visit' ? 'Still waiting for the inspection.' : 'The repair is still in progress.')
         : status;
       detail.append(node('p', update === status ? status : `${update} ${status}`));
-      if (!farm.monthClosed && item.scenario && item.stage === 'repairing' &&
-          Number.isFinite(item.dueHour) && item.dueHour < (farm.tick + 1) * 24) {
-        const label = item.step === 'dealer-visit' ? 'The fitter has arrived' :
-          'I’m putting it back to work';
-        const collecting = item.route === 'drop-off' && item.step !== 'dealer-visit';
-        if (collecting) detail.append(node('p', `Ready to collect from ${repairTime(item.dueHour)}.`));
-        detail.append(button(collecting ? 'I’m on my way to collect it' : `It’s ${repairTime(item.dueHour)} or later · ${label}`, () => {
-          advanceRepairClock(item.dueHour);
-          $('job-status-' + item.id)?.focus();
-        }, 'primary'));
-      }
       detail.append(button('Open conversation', () => {
         selectContact(item.contact, item.id);
         save();
@@ -1029,11 +1047,6 @@ function scheduledMessagesRemaining() {
   return farm.pendingMessages.length + (farm.queue[0]?.dueAt !== undefined ? farm.queue.length : 0);
 }
 
-function nextRepairUpdate() {
-  if (farm.monthClosed) return Infinity;
-  return Math.min(...farm.incidents.filter(job => job.scenario && job.stage === 'repairing' &&
-    job.dueHour < (farm.tick + 1) * 24).map(job => job.dueHour));
-}
 function advanceRepairClock(due) {
   if (farm.monthClosed || !Number.isFinite(due) || due >= (farm.tick + 1) * 24) return;
   farm.hour = Math.max(farm.hour ?? 8, due % 24);
@@ -1043,7 +1056,6 @@ function advanceRepairClock(due) {
   save();
   render();
 }
-$('next-repair-update').addEventListener('click', () => advanceRepairClock(nextRepairUpdate()));
 function render() {
   scheduleDelivery();
   renderSound();
@@ -1055,19 +1067,16 @@ function render() {
   renderJobs();
   const hasContacts = Object.keys(people).some(receivesEvents);
   $('message-setup-status').hidden = hasContacts;
-  const update = $('next-repair-update');
-  const next = nextRepairUpdate();
-  update.hidden = !Number.isFinite(next);
-  if (!update.hidden) update.textContent = `Advance farm clock to ${repairTime(next)}`;
   $('workspace').setAttribute('data-view', messageView);
   $('date').textContent = period();
   $('day').textContent = `Day ${farm.day} of ${farm.days}`;
   $('advance').textContent = !farm.started ? 'Start farm messages' :
+    unacknowledgedBattery() ? 'Reply to dead battery message' :
     farm.day < farm.days ? `Advance to Day ${farm.day + 1}` : 'Open accountant chat';
   const desktopAdvance = $('desktop-advance');
   const endOfMonth = farm.started && farm.day === farm.days;
   $('desktop-date').textContent = `${monthName()} · ${$('day').textContent}`;
-  desktopAdvance.textContent = endOfMonth ? 'Open accountant chat' :
+  desktopAdvance.textContent = farm.started && unacknowledgedBattery() ? 'Reply to dead battery message' : endOfMonth ? 'Open accountant chat' :
     !farm.started ? 'Start farm messages' : 'Next day';
   renderContacts();
   renderChat();
